@@ -52,11 +52,21 @@ export async function POST(request: Request) {
         }
 
         if (bookingCode.status === "booked") {
+            const { data: existingBooking } = await supabaseAdmin
+                .from("bookings")
+                .select("ticket_id")
+                .eq("booking_code_id", bookingCode.id)
+                .eq("status", "confirmed")
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+
             return NextResponse.json(
                 {
                     success: false,
                     message: "This booking code has already been used.",
                     alreadyBooked: true,
+                    ticketId: existingBooking?.ticket_id || null,
                 },
                 { status: 409 }
             );

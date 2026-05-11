@@ -28,6 +28,11 @@ export default function HomePage() {
             const result = await response.json();
 
             if (!response.ok || !result.success) {
+                if (result.alreadyBooked && result.ticketId) {
+                    router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
+                    return;
+                }
+
                 setMessage(result.message || "Invalid booking code.");
                 return;
             }
