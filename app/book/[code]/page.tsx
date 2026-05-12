@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import SeatSelection from "@/components/SeatSelection";
+import TheatreSeatSelection from "@/components/TheatreSeatSelection";
 
 type PageProps = {
     params: Promise<{
@@ -142,12 +142,16 @@ export default async function BookPage({ params }: PageProps) {
         );
     }
 
-    const { data: seats, error: seatsError } = await supabaseAdmin
-        .from("seats")
-        .select("*")
-        .eq("event_id", bookingCode.event_id)
-        .order("row_name", { ascending: true })
-        .order("seat_number", { ascending: true });
+    const { data: seats, error: seatsError } = await fetchAllSeatsForEvent(event.id);
+    console.log("Total seats loaded:", seats?.length);
+    console.log("Ground seats loaded:", seats?.filter((s) => s.floor_name === "ground").length);
+    console.log("Balcony seats loaded:", seats?.filter((s) => s.floor_name === "balcony").length);
+    console.log(
+        "Ground K seats:",
+        seats
+            ?.filter((s) => s.floor_name === "ground" && s.row_name === "K")
+            .map((s) => s.display_label || s.seat_label)
+    );
 
     if (seatsError || !seats) {
         return (
@@ -173,10 +177,46 @@ export default async function BookPage({ params }: PageProps) {
     }
 
     return (
-        <SeatSelection
+        <TheatreSeatSelection
             bookingCode={bookingCode}
             event={event}
             seats={seats}
         />
     );
+}
+
+async function fetchAllSeatsForEvent(eventId: string) {
+    const pageSize = 1000;
+    let from = 0;
+    const allSeats: any[] = [];
+
+    while (true) {
+        const { data, error } = await supabaseAdmin
+            .from("seats")
+            .select("*")
+            .eq("event_id", eventId)
+            .order("floor_name", { ascending: true })
+            .order("block_order", { ascending: true })
+            .order("row_order", { ascending: true })
+            .order("seat_number", { ascending: true })
+            .range(from, from + pageSize - 1);
+
+        if (error) {
+            return { data: null, error };
+        }
+
+        if (!data || data.length === 0) {
+            break;
+        }
+
+        allSeats.push(...data);
+
+        if (data.length < pageSize) {
+            break;
+        }
+
+        from += pageSize;
+    }
+
+    return { data: allSeats, error: null };
 }

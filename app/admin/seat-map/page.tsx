@@ -1,13 +1,9 @@
 ﻿import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import VisualSeatMap from "@/components/VisualSeatMap";
+import TheatreSeatMap from "@/components/TheatreSeatMap";
 
 export default async function AdminSeatMapPage() {
-    const { data: seats, error: seatsError } = await supabaseAdmin
-        .from("seats")
-        .select("*")
-        .order("row_name", { ascending: true })
-        .order("seat_number", { ascending: true });
+    const { data: seats, error: seatsError } = await fetchAllSeats();
 
     const { data: bookingSeats, error: bookingSeatsError } = await supabaseAdmin
         .from("booking_seats")
@@ -129,30 +125,47 @@ export default async function AdminSeatMapPage() {
 
                 <div className="mt-6">
                     <div className="space-y-10">
-                        <section>
-                            <h2 className="mb-4 text-2xl font-bold text-gray-900">
-                                Ground Floor
-                            </h2>
-
-                            <VisualSeatMap
-                                seats={(seats || []).filter((seat: any) => seat.floor_name === "ground")}
+                        <div className="mt-6">
+                            <TheatreSeatMap
+                                seats={seats || []}
                                 bookingInfo={bookingInfo}
+                                mode="admin"
                             />
-                        </section>
-
-                        <section>
-                            <h2 className="mb-4 text-2xl font-bold text-gray-900">
-                                First Floor
-                            </h2>
-
-                            <VisualSeatMap
-                                seats={(seats || []).filter((seat: any) => seat.floor_name === "first")}
-                                bookingInfo={bookingInfo}
-                            />
-                        </section>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
     );
+}
+
+async function fetchAllSeats() {
+    const pageSize = 1000;
+    let from = 0;
+    let allSeats: any[] = [];
+
+    while (true) {
+        const { data, error } = await supabaseAdmin
+            .from("seats")
+            .select("*")
+            .order("floor_name", { ascending: true })
+            .order("block_order", { ascending: true })
+            .order("row_order", { ascending: true })
+            .order("seat_number", { ascending: true })
+            .range(from, from + pageSize - 1);
+
+        if (error) {
+            return { data: null, error };
+        }
+
+        allSeats = [...allSeats, ...(data || [])];
+
+        if (!data || data.length < pageSize) {
+            break;
+        }
+
+        from += pageSize;
+    }
+
+    return { data: allSeats, error: null };
 }
