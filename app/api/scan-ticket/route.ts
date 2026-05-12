@@ -1,8 +1,18 @@
 ﻿import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
+    const cookieStore = await cookies();
+    const isScannerLoggedIn = cookieStore.get("admin_auth")?.value === "true";
+
+    if (!isScannerLoggedIn) {
+        return NextResponse.json(
+            { success: false, message: "Unauthorized." },
+            { status: 401 }
+        );
+    }
     const formData = await request.formData();
     const ticketId = String(formData.get("ticketId") || "").trim();
 

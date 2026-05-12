@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { cookies } from "next/headers";
 
 type PageProps = {
     params: Promise<{
@@ -9,6 +10,8 @@ type PageProps = {
 
 export default async function VerifyTicketPage({ params }: PageProps) {
     const { ticketId } = await params;
+    const cookieStore = await cookies();
+    const isScannerLoggedIn = cookieStore.get("admin_auth")?.value === "true";
 
     const decodedTicketId = decodeURIComponent(ticketId).trim();
 
@@ -152,10 +155,22 @@ export default async function VerifyTicketPage({ params }: PageProps) {
                         <p className="font-bold text-gray-900">{bookingCode?.code_type}</p>
                     </div>
 
-                    {alreadyScanned && firstScan && (
-                        <div className="rounded-lg bg-orange-100 p-4 text-orange-800">
-                            First scanned at:{" "}
-                            {new Date(firstScan.scanned_at).toLocaleString()}
+                    {!alreadyScanned && isScannerLoggedIn && (
+                        <form action={`/api/scan-ticket`} method="POST" className="mt-6">
+                            <input type="hidden" name="ticketId" value={booking.ticket_id} />
+
+                            <button
+                                type="submit"
+                                className="w-full rounded-lg bg-green-600 px-4 py-4 text-lg font-bold text-white"
+                            >
+                                Mark as Entered
+                            </button>
+                        </form>
+                    )}
+
+                    {!alreadyScanned && !isScannerLoggedIn && (
+                        <div className="mt-6 rounded-xl bg-yellow-50 p-4 text-sm text-yellow-800">
+                            This ticket is valid. Entry marking is only available to authorized scanning staff.
                         </div>
                     )}
                 </div>
