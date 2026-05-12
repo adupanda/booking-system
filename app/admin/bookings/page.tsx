@@ -1,4 +1,7 @@
-﻿import Link from "next/link";
+﻿export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export default async function AdminBookingsPage() {
@@ -27,21 +30,22 @@ export default async function AdminBookingsPage() {
       booking_seats (
         seats (
           seat_label,
+          display_label,
           row_name,
           seat_number,
           section
         )
-      ),
-      ticket_scans (
-        id,
-        scanned_at,
-        scan_status
       )
     `
         )
         .order("created_at", { ascending: false });
 
-    if (error) {
+    const { data: scans, error: scansError } = await supabaseAdmin
+        .from("ticket_scans")
+        .select("id, booking_id, ticket_id, scanned_at, scan_status")
+        .order("scanned_at", { ascending: true });
+
+    if (error || scansError) {
         return (
             <main className="min-h-screen bg-gray-50 p-8">
                 <h1 className="text-3xl font-bold text-red-600">
@@ -49,38 +53,75 @@ export default async function AdminBookingsPage() {
                 </h1>
 
                 <pre className="mt-4 rounded bg-white p-4 text-sm text-red-600">
-          {error.message}
+          {error?.message || scansError?.message}
         </pre>
             </main>
         );
     }
 
+    const scansByBookingId = new Map<string, any[]>();
+
+    for (const scan of scans || []) {
+        if (!scan.booking_id) continue;
+
+        const existing = scansByBookingId.get(scan.booking_id) || [];
+        existing.push(scan);
+        scansByBookingId.set(scan.booking_id, existing);
+    }
+
     function getSeats(booking: any) {
         return (
             booking.booking_seats
-                ?.map((item: any) => item.seats?.seat_label)
+                ?.map((item: any) => {
+                    const seat = item.seats;
+                    if (!seat) return null;
+
+                    const label = seat.display_label || seat.seat_label;
+                    const section = seat.section;
+
+                    return section ? `${section} - ${label}` : label;
+                })
                 .filter(Boolean)
                 .join(", ") || "-"
         );
     }
 
     function getScanStatus(booking: any) {
-        const validScans =
-            booking.ticket_scans?.filter(
-                (scan: any) => scan.scan_status === "valid"
-            ) || [];
+        const bookingScans = scansByBookingId.get(booking.id) || [];
 
-        if (validScans.length > 0) {
+        const hasValidScan = bookingScans.some(
+            (scan: any) => scan.scan_status === "valid"
+        );
+
+        if (hasValidScan) {
             return "Entered";
+        }
+
+        const hasDuplicateScan = bookingScans.some(
+            (scan: any) => scan.scan_status === "duplicate"
+        );
+
+        if (hasDuplicateScan) {
+            return "Duplicate Scan";
         }
 
         return "Not entered";
     }
 
+    function getFirstScanTime(booking: any) {
+        const bookingScans = scansByBookingId.get(booking.id) || [];
+
+        const validScan = bookingScans.find(
+            (scan: any) => scan.scan_status === "valid"
+        );
+
+        if (!validScan) return "-";
+
+        return new Date(validScan.scanned_at).toLocaleString();
+    }
+
     function getEvent(booking: any) {
-        return Array.isArray(booking.events)
-            ? booking.events[0]
-            : booking.events;
+        return Array.isArray(booking.events) ? booking.events[0] : booking.events;
     }
 
     function getBookingCode(booking: any) {
@@ -88,6 +129,19 @@ export default async function AdminBookingsPage() {
             ? booking.booking_codes[0]
             : booking.booking_codes;
     }
+
+    const enteredCount =
+        bookings?.filter((booking: any) => getScanStatus(booking) === "Entered")
+            .length || 0;
+
+    const notEnteredCount =
+        bookings?.filter(
+            (booking: any) => getScanStatus(booking) === "Not entered"
+        ).length || 0;
+
+    const confirmedCount =
+        bookings?.filter((booking: any) => booking.status === "confirmed").length ||
+        0;
 
     return (
         <main className="min-h-screen bg-gray-50 p-6">
@@ -122,33 +176,21 @@ export default async function AdminBookingsPage() {
                     <div className="rounded-xl bg-white p-5 shadow">
                         <p className="text-sm text-gray-500">Entered</p>
                         <p className="mt-1 text-3xl font-bold text-green-600">
-                            {
-                                bookings?.filter(
-                                    (booking: any) => getScanStatus(booking) === "Entered"
-                                ).length
-                            }
+                            {enteredCount}
                         </p>
                     </div>
 
                     <div className="rounded-xl bg-white p-5 shadow">
                         <p className="text-sm text-gray-500">Not Entered</p>
                         <p className="mt-1 text-3xl font-bold text-orange-600">
-                            {
-                                bookings?.filter(
-                                    (booking: any) => getScanStatus(booking) === "Not entered"
-                                ).length
-                            }
+                            {notEnteredCount}
                         </p>
                     </div>
 
                     <div className="rounded-xl bg-white p-5 shadow">
                         <p className="text-sm text-gray-500">Confirmed</p>
                         <p className="mt-1 text-3xl font-bold text-gray-900">
-                            {
-                                bookings?.filter(
-                                    (booking: any) => booking.status === "confirmed"
-                                ).length
-                            }
+                            {confirmedCount}
                         </p>
                     </div>
                 </div>
@@ -165,6 +207,7 @@ export default async function AdminBookingsPage() {
                             <th className="whitespace-nowrap px-4 py-3">Seats</th>
                             <th className="whitespace-nowrap px-4 py-3">Ticket ID</th>
                             <th className="whitespace-nowrap px-4 py-3">Entry</th>
+                            <th className="whitespace-nowrap px-4 py-3">Scanned At</th>
                             <th className="whitespace-nowrap px-4 py-3">Actions</th>
                         </tr>
                         </thead>
@@ -172,7 +215,6 @@ export default async function AdminBookingsPage() {
                         <tbody>
                         {bookings && bookings.length > 0 ? (
                             bookings.map((booking: any) => {
-                                const event = getEvent(booking);
                                 const bookingCode = getBookingCode(booking);
                                 const scanStatus = getScanStatus(booking);
 
@@ -211,11 +253,17 @@ export default async function AdminBookingsPage() {
                             className={`rounded-full px-3 py-1 text-xs font-bold ${
                                 scanStatus === "Entered"
                                     ? "bg-green-100 text-green-700"
-                                    : "bg-orange-100 text-orange-700"
+                                    : scanStatus === "Duplicate Scan"
+                                        ? "bg-red-100 text-red-700"
+                                        : "bg-orange-100 text-orange-700"
                             }`}
                         >
                           {scanStatus}
                         </span>
+                                        </td>
+
+                                        <td className="whitespace-nowrap px-4 py-3 text-gray-700">
+                                            {getFirstScanTime(booking)}
                                         </td>
 
                                         <td className="whitespace-nowrap px-4 py-3">
@@ -245,7 +293,7 @@ export default async function AdminBookingsPage() {
                         ) : (
                             <tr>
                                 <td
-                                    colSpan={9}
+                                    colSpan={10}
                                     className="px-4 py-10 text-center text-gray-500"
                                 >
                                     No bookings found yet.
@@ -257,7 +305,8 @@ export default async function AdminBookingsPage() {
                 </div>
 
                 <p className="mt-4 text-sm text-gray-500">
-                    Current event data is pulled from your Supabase bookings table.
+                    Current event data is pulled from your Supabase bookings and ticket
+                    scans tables.
                 </p>
             </div>
         </main>
