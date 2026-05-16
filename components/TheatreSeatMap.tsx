@@ -20,7 +20,7 @@ type Seat = {
     is_bookable: boolean | null;
 };
 
-type BookingInfo = {
+    type BookingInfo = {
     seat_id: string;
     ticket_id: string | null;
     learner_name: string | null;

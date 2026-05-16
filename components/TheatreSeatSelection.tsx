@@ -187,14 +187,43 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                         Scroll sideways inside each section if needed.
                     </p>
 
-                    <TheatreSeatMap
-                        seats={seats}
-                        mode="booking"
-                        selectedSeatIds={selectedSeatIds}
-                        maxSelectable={remainingSeats}
-                        codeType={bookingCode.code_type}
-                        onSeatClick={handleSeatClick}
-                    />
+                    <div className="space-y-10">
+                        <section>
+                            <div className="mb-4 rounded-xl bg-gray-100 p-4">
+                                <h3 className="text-xl font-bold text-gray-900">Ground Floor</h3>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    Select seats from the main floor.
+                                </p>
+                            </div>
+
+                            <TheatreSeatMap
+                                seats={seats.filter((seat) => seat.floor_name === "ground")}
+                                mode="booking"
+                                selectedSeatIds={selectedSeatIds}
+                                maxSelectable={remainingSeats}
+                                codeType={bookingCode.code_type}
+                                onSeatClick={handleSeatClick}
+                            />
+                        </section>
+
+                        <section>
+                            <div className="mb-4 rounded-xl bg-gray-100 p-4">
+                                <h3 className="text-xl font-bold text-gray-900">Balcony / First Floor</h3>
+                                <p className="mt-1 text-sm text-gray-600">
+                                    Select seats from the upper floor or balcony.
+                                </p>
+                            </div>
+
+                            <TheatreSeatMap
+                                seats={seats.filter((seat) => seat.floor_name === "first")}
+                                mode="booking"
+                                selectedSeatIds={selectedSeatIds}
+                                maxSelectable={remainingSeats}
+                                codeType={bookingCode.code_type}
+                                onSeatClick={handleSeatClick}
+                            />
+                        </section>
+                    </div>
                 </div>
 
                 <div className="sticky bottom-0 z-30 mt-6 rounded-2xl bg-white p-6 shadow">

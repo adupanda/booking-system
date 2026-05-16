@@ -126,11 +126,37 @@ export default async function AdminSeatMapPage() {
                 <div className="mt-6">
                     <div className="space-y-10">
                         <div className="mt-6">
-                            <TheatreSeatMap
-                                seats={seats || []}
-                                bookingInfo={bookingInfo}
-                                mode="admin"
-                            />
+                            <div className="space-y-10">
+                                <section>
+                                    <div className="mb-4 rounded-2xl bg-white p-5 shadow">
+                                        <h2 className="text-2xl font-bold text-gray-900">Ground Floor</h2>
+                                        <p className="mt-1 text-sm text-gray-600">
+                                            Main floor seating layout.
+                                        </p>
+                                    </div>
+
+                                    <TheatreSeatMap
+                                        seats={(seats || []).filter((seat: any) => seat.floor_name === "ground")}
+                                        bookingInfo={bookingInfo}
+                                        mode="admin"
+                                    />
+                                </section>
+
+                                <section>
+                                    <div className="mb-4 rounded-2xl bg-white p-5 shadow">
+                                        <h2 className="text-2xl font-bold text-gray-900">Balcony / First Floor</h2>
+                                        <p className="mt-1 text-sm text-gray-600">
+                                            Upper floor and balcony seating layout.
+                                        </p>
+                                    </div>
+
+                                    <TheatreSeatMap
+                                        seats={(seats || []).filter((seat: any) => seat.floor_name === "first")}
+                                        bookingInfo={bookingInfo}
+                                        mode="admin"
+                                    />
+                                </section>
+                            </div>
                         </div>
                     </div>
                 </div>
