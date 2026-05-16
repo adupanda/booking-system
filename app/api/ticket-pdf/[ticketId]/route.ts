@@ -1,4 +1,5 @@
-﻿import { NextResponse } from "next/server";
+﻿import React from "react";
+import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TicketPdfDocument from "@/components/TicketPdfDocument";
@@ -78,21 +79,22 @@ export async function GET(_request: Request, { params }: RouteProps) {
             .filter(Boolean)
             .join(", ") || "No seats found";
 
-    const pdfBuffer = await renderToBuffer(
-        <TicketPdfDocument
-            eventName={event?.name || "School Event"}
-    eventDate={event?.event_date || null}
-    venue={event?.venue || null}
-    ticketId={booking.ticket_id}
-    bookingCode={bookingCode?.code || "-"}
-    learnerName={booking.learner_name}
-    parentName={booking.parent_name}
-    seats={seats}
-    codeType={bookingCode?.code_type || null}
-    />
-);
+    const pdfElement = React.createElement(TicketPdfDocument as any, {
+        eventName: event?.name || "School Event",
+        eventDate: event?.event_date || null,
+        venue: event?.venue || null,
+        ticketId: booking.ticket_id,
+        bookingCode: bookingCode?.code || "-",
+        learnerName: booking.learner_name,
+        parentName: booking.parent_name,
+        seats,
+        codeType: bookingCode?.code_type || null,
+    });
 
-    return new NextResponse(pdfBuffer, {
+    const pdfBuffer = await renderToBuffer(pdfElement as any);
+
+
+    return new Response(new Uint8Array(pdfBuffer), {
         status: 200,
         headers: {
             "Content-Type": "application/pdf",
