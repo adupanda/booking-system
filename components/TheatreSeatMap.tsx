@@ -133,7 +133,6 @@ export default function TheatreSeatMap({
         if (seat.status === "booked") return "border-gray-300 bg-gray-300 text-gray-500";
         if (seat.status === "blocked" || !seat.is_bookable) return "border-gray-900 bg-gray-900 text-white";
         if (mode === "booking" && !allowed) return "border-red-200 bg-red-50 text-red-300";
-        if (seat.seat_category === "paid") return "border-purple-300 bg-purple-50 text-purple-700";
         if (seat.seat_category === "vip") return "border-yellow-300 bg-yellow-50 text-yellow-800";
 
         return "border-blue-500 bg-blue-100 text-sky-800";
@@ -281,11 +280,7 @@ export default function TheatreSeatMap({
                     <span className="h-4 w-4 rounded border border-sky-300 bg-sky-50" />
                     Regular / Available
                 </div>
-
-                <div className="flex items-center gap-2">
-                    <span className="h-4 w-4 rounded border border-purple-300 bg-purple-50" />
-                    Paid Category
-                </div>
+                
 
                 <div className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded border border-yellow-300 bg-yellow-50" />
