@@ -215,7 +215,7 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                             </div>
 
                             <TheatreSeatMap
-                                seats={seats.filter((seat) => seat.floor_name === "first")}
+                                seats={seats.filter((seat) => seat.floor_name === "balcony")}
                                 mode="booking"
                                 selectedSeatIds={selectedSeatIds}
                                 maxSelectable={remainingSeats}

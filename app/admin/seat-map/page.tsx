@@ -151,7 +151,7 @@ export default async function AdminSeatMapPage() {
                                     </div>
 
                                     <TheatreSeatMap
-                                        seats={(seats || []).filter((seat: any) => seat.floor_name === "first")}
+                                        seats={(seats || []).filter((seat: any) => seat.floor_name === "balcony")}
                                         bookingInfo={bookingInfo}
                                         mode="admin"
                                     />
