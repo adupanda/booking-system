@@ -1,5 +1,6 @@
 ﻿import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import TicketActions from "@/components/TicketActions";
 
 type PageProps = {
     params: Promise<{
@@ -149,6 +150,8 @@ export default async function TicketPage({ params }: PageProps) {
                     Please show this ticket at the entrance. Entry staff will verify your ticket
                     using the ticket ID and seat details.
                 </div>
+
+                <TicketActions ticketId={booking.ticket_id} />
 
                 <p className="mt-6 text-center text-sm text-gray-500">
                     Use your browser print option to save or print this ticket.
