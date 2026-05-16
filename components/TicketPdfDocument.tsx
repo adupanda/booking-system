@@ -1,0 +1,173 @@
+﻿import {
+    Document,
+    Page,
+    Text,
+    View,
+    StyleSheet,
+} from "@react-pdf/renderer";
+
+type TicketPdfDocumentProps = {
+    eventName: string;
+    eventDate: string | null;
+    venue: string | null;
+    ticketId: string;
+    bookingCode: string;
+    learnerName: string | null;
+    parentName: string | null;
+    seats: string;
+    codeType: string | null;
+};
+
+const styles = StyleSheet.create({
+    page: {
+        padding: 36,
+        fontSize: 12,
+        fontFamily: "Helvetica",
+        backgroundColor: "#ffffff",
+    },
+    ticket: {
+        borderWidth: 2,
+        borderColor: "#111827",
+        borderStyle: "solid",
+        padding: 24,
+        borderRadius: 8,
+    },
+    smallHeader: {
+        fontSize: 10,
+        textTransform: "uppercase",
+        color: "#6b7280",
+        letterSpacing: 1,
+        textAlign: "center",
+        marginBottom: 8,
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: "bold",
+        textAlign: "center",
+        marginBottom: 6,
+        color: "#111827",
+    },
+    subtitle: {
+        fontSize: 12,
+        textAlign: "center",
+        color: "#4b5563",
+        marginBottom: 20,
+    },
+    row: {
+        flexDirection: "row",
+        borderBottomWidth: 1,
+        borderBottomColor: "#e5e7eb",
+        borderBottomStyle: "solid",
+        paddingVertical: 9,
+    },
+    label: {
+        width: "35%",
+        fontSize: 10,
+        color: "#6b7280",
+    },
+    value: {
+        width: "65%",
+        fontSize: 12,
+        color: "#111827",
+        fontWeight: "bold",
+    },
+    seatsBox: {
+        marginTop: 20,
+        padding: 16,
+        backgroundColor: "#f3f4f6",
+        borderRadius: 6,
+    },
+    seatsLabel: {
+        fontSize: 10,
+        color: "#6b7280",
+        textAlign: "center",
+        marginBottom: 6,
+    },
+    seatsValue: {
+        fontSize: 22,
+        fontWeight: "bold",
+        textAlign: "center",
+        color: "#111827",
+    },
+    note: {
+        marginTop: 20,
+        padding: 12,
+        backgroundColor: "#eff6ff",
+        color: "#1e40af",
+        fontSize: 10,
+        lineHeight: 1.4,
+    },
+    footer: {
+        marginTop: 18,
+        fontSize: 9,
+        color: "#6b7280",
+        textAlign: "center",
+    },
+});
+
+export default function TicketPdfDocument({
+                                              eventName,
+                                              eventDate,
+                                              venue,
+                                              ticketId,
+                                              bookingCode,
+                                              learnerName,
+                                              parentName,
+                                              seats,
+                                              codeType,
+                                          }: TicketPdfDocumentProps) {
+    return (
+        <Document>
+            <Page size="A4" style={styles.page}>
+                <View style={styles.ticket}>
+                    <Text style={styles.smallHeader}>School Event Ticket</Text>
+
+                    <Text style={styles.title}>{eventName}</Text>
+
+                    <Text style={styles.subtitle}>
+                        {[venue, eventDate].filter(Boolean).join(" | ")}
+                    </Text>
+
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Ticket ID</Text>
+                        <Text style={styles.value}>{ticketId}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Booking Code</Text>
+                        <Text style={styles.value}>{bookingCode}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Learner / Guest</Text>
+                        <Text style={styles.value}>{learnerName || "Guest"}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Parent / Contact</Text>
+                        <Text style={styles.value}>{parentName || "Not provided"}</Text>
+                    </View>
+
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Code Type</Text>
+                        <Text style={styles.value}>{codeType || "-"}</Text>
+                    </View>
+
+                    <View style={styles.seatsBox}>
+                        <Text style={styles.seatsLabel}>Seats</Text>
+                        <Text style={styles.seatsValue}>{seats}</Text>
+                    </View>
+
+                    <Text style={styles.note}>
+                        Please save this ticket and show it at the entrance. Entry staff
+                        will verify the ticket using the ticket ID and seat details.
+                    </Text>
+
+                    <Text style={styles.footer}>
+                        This ticket was generated by the school seat booking system.
+                    </Text>
+                </View>
+            </Page>
+        </Document>
+    );
+}

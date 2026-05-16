@@ -24,19 +24,14 @@ export default function TicketActions({ ticketId }: TicketActionsProps) {
         }
     }
 
-    function handlePrint() {
-        window.print();
-    }
-
     return (
         <div className="mt-6 flex flex-col gap-3 print:hidden sm:flex-row">
-            <button
-                type="button"
-                onClick={handlePrint}
-                className="w-full rounded-lg bg-black px-4 py-3 font-semibold text-white"
+            <a
+                href={`/api/ticket-pdf/${encodeURIComponent(ticketId)}`}
+                className="w-full rounded-lg bg-black px-4 py-3 text-center font-semibold text-white"
             >
-                Download / Save as PDF
-            </button>
+                Download Ticket PDF
+            </a>
 
             <button
                 type="button"
