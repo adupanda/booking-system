@@ -51,28 +51,29 @@ export async function POST(request: Request) {
             );
         }
 
-        if (bookingCode.status === "booked") {
+        const remainingSeats =
+            Number(bookingCode.max_seats || 0) - Number(bookingCode.used_seats || 0);
+
+        if (bookingCode.status === "booked" || remainingSeats <= 0) {
             const { data: existingBooking } = await supabaseAdmin
                 .from("bookings")
                 .select("ticket_id")
                 .eq("booking_code_id", bookingCode.id)
                 .eq("status", "confirmed")
-                .order("created_at", { ascending: false })
+                .order("created_at", { ascending: true })
                 .limit(1)
                 .single();
 
             return NextResponse.json(
                 {
                     success: false,
-                    message: "This booking code has already been used.",
+                    message: "This booking code has no seats remaining.",
                     alreadyBooked: true,
                     ticketId: existingBooking?.ticket_id || null,
                 },
                 { status: 409 }
             );
         }
-
-        const remainingSeats = bookingCode.max_seats - bookingCode.used_seats;
 
         if (remainingSeats <= 0) {
             return NextResponse.json(

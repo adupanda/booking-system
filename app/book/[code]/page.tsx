@@ -41,8 +41,11 @@ export default async function BookPage({ params }: PageProps) {
             </main>
         );
     }
+    
+    const remainingSeats =
+        Number(bookingCode.max_seats || 0) - Number(bookingCode.used_seats || 0);
 
-    if (bookingCode.status === "booked") {
+    if (bookingCode.status === "booked" || remainingSeats <= 0) {
         return (
             <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
                 <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
@@ -88,7 +91,7 @@ export default async function BookPage({ params }: PageProps) {
         );
     }
 
-    const remainingSeats = bookingCode.max_seats - bookingCode.used_seats;
+    
 
     if (remainingSeats <= 0) {
         return (
