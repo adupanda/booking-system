@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useRef, useState } from "react";
 
@@ -22,7 +22,7 @@ type Seat = {
     is_bookable: boolean | null;
 };
 
-    type BookingInfo = {
+type BookingInfo = {
     seat_id: string;
     ticket_id: string | null;
     learner_name: string | null;
@@ -42,11 +42,6 @@ type TheatreSeatMapProps = {
 
 type FloorKey = "ground" | "balcony" | "other";
 
-const SEAT_SIZE = 20;
-const SEAT_PADDING = 60;
-const FLOOR_MIN_WIDTH = 920;
-const FLOOR_EXTRA_BOTTOM_SPACE = 260;
-
 type ViewportState = {
     scrollLeft: number;
     scrollTop: number;
@@ -56,16 +51,57 @@ type ViewportState = {
     scrollHeight: number;
 };
 
+const SEAT_SIZE = 20;
+const SEAT_PADDING = 60;
+const FLOOR_MIN_WIDTH = 920;
+const FLOOR_EXTRA_BOTTOM_SPACE = 260;
+
+function getCategory(seat: Seat) {
+    return String(seat.seat_category || "").trim().toLowerCase();
+}
+
+function isPaidFamilySeat(seat: Seat) {
+    const category = getCategory(seat);
+    return category === "paid" || category === "family_paid";
+}
+
+function getFloorKey(floorName: string | null): FloorKey {
+    const value = (floorName || "").toLowerCase();
+
+    if (value.includes("ground")) return "ground";
+    if (value.includes("balcony") || value.includes("first")) return "balcony";
+
+    return "other";
+}
+
+function getFloorTitle(floorKey: FloorKey) {
+    if (floorKey === "ground") return "GROUND FLOOR";
+    if (floorKey === "balcony") return "BALCONY";
+    return "OTHER SEATING";
+}
+
+function sortSeats(a: Seat, b: Seat) {
+    return (
+        (a.block_order ?? 999) - (b.block_order ?? 999) ||
+        (a.row_order ?? 999) - (b.row_order ?? 999) ||
+        (a.seat_number ?? 999) - (b.seat_number ?? 999)
+    );
+}
+
+function getSeatText(seat: Seat) {
+    return seat.display_label || seat.seat_number || seat.seat_label;
+}
+
 function MiniMap({
-                     floorKey,
-                     floorSeats,
-                     selectedSeatIds,
-                     minX,
-                     minY,
-                     mapWidth,
-                     mapHeight,
-                     viewport,
-                 }: {
+    floorKey,
+    floorSeats,
+    selectedSeatIds,
+    minX,
+    minY,
+    mapWidth,
+    mapHeight,
+    viewport,
+}: {
     floorKey: FloorKey;
     floorSeats: Seat[];
     selectedSeatIds: string[];
@@ -100,13 +136,14 @@ function MiniMap({
     );
 
     function getMiniSeatClass(seat: Seat) {
-        const category = String(seat.seat_category || "").trim().toLowerCase();
+        const category = getCategory(seat);
 
         if (selectedSeatIds.includes(seat.id)) return "bg-blue-600";
         if (seat.status === "booked") return "bg-gray-400";
+        if (seat.status === "held") return "bg-amber-400";
         if (seat.status === "blocked" || !seat.is_bookable) return "bg-gray-900";
         if (category === "vip") return "bg-yellow-400";
-        if (category === "paid" || category === "family_paid") return "bg-purple-400";
+        if (isPaidFamilySeat(seat)) return "bg-purple-400";
 
         return "bg-sky-300";
     }
@@ -116,9 +153,7 @@ function MiniMap({
             className="pointer-events-none absolute right-3 top-3 z-40 rounded-xl border border-gray-300 bg-white/95 p-2 shadow-lg"
             style={{ width: miniWidth + 18 }}
         >
-            <p className="mb-1 text-center text-[10px] font-bold text-gray-700">
-                MAP VIEW
-            </p>
+            <p className="mb-1 text-center text-[10px] font-bold text-gray-700">MAP VIEW</p>
 
             <div
                 className="relative overflow-hidden rounded-md border border-gray-200 bg-gray-50"
@@ -151,6 +186,7 @@ function MiniMap({
                         FRONT
                     </div>
                 )}
+
                 {floorSeats.map((seat) => {
                     const left = ((seat.layout_x as number) - minX + SEAT_PADDING) * scale;
                     const top = ((seat.layout_y as number) - minY + SEAT_PADDING) * scale;
@@ -182,65 +218,21 @@ function MiniMap({
         </div>
     );
 }
-function getFloorKey(floorName: string | null): FloorKey {
-    const value = (floorName || "").toLowerCase();
-
-    if (value.includes("ground")) return "ground";
-    if (value.includes("balcony") || value.includes("first")) return "balcony";
-
-    return "other";
-}
-
-function getFloorTitle(floorKey: FloorKey) {
-    if (floorKey === "ground") return "GROUND FLOOR";
-    if (floorKey === "balcony") return "BALCONY";
-    return "OTHER SEATING";
-}
-
-function sortSeats(a: Seat, b: Seat) {
-    return (
-        (a.block_order ?? 999) - (b.block_order ?? 999) ||
-        (a.row_order ?? 999) - (b.row_order ?? 999) ||
-        (a.seat_number ?? 999) - (b.seat_number ?? 999)
-    );
-}
 
 export default function TheatreSeatMap({
-                                           seats,
-                                           bookingInfo = [],
-                                           mode,
-                                           selectedSeatIds = [],
-                                           maxSelectable = 0,
-                                           codeType,
-                                           onSeatClick,
-                                       }: TheatreSeatMapProps) {
+    seats,
+    bookingInfo = [],
+    mode,
+    selectedSeatIds = [],
+    maxSelectable = 0,
+    codeType,
+    onSeatClick,
+}: TheatreSeatMapProps) {
     const scrollContainerRefs = useRef<Partial<Record<FloorKey, HTMLDivElement | null>>>({});
     const [viewportByFloor, setViewportByFloor] = useState<Partial<Record<FloorKey, ViewportState>>>({});
 
-    function updateViewport(floorKey: FloorKey, element: HTMLDivElement) {
-        const nextViewport: ViewportState = {
-            scrollLeft: element.scrollLeft,
-            scrollTop: element.scrollTop,
-            clientWidth: element.clientWidth,
-            clientHeight: element.clientHeight,
-            scrollWidth: element.scrollWidth,
-            scrollHeight: element.scrollHeight,
-        };
-
-        setViewportByFloor((current) => ({
-            ...current,
-            [floorKey]: nextViewport,
-        }));
-    }
-
-    function setScrollContainer(floorKey: FloorKey, element: HTMLDivElement | null) {
-        scrollContainerRefs.current[floorKey] = element;
-    }
     const bookingBySeatId = new Map<string, BookingInfo>();
-
-    for (const info of bookingInfo) {
-        bookingBySeatId.set(info.seat_id, info);
-    }
+    for (const info of bookingInfo) bookingBySeatId.set(info.seat_id, info);
 
     const positionedSeats = seats
         .filter((seat) => seat.layout_x !== null && seat.layout_y !== null)
@@ -256,29 +248,30 @@ export default function TheatreSeatMap({
     );
 
     const floorOrder: FloorKey[] = ["balcony", "ground", "other"];
+    const visibleFloors = floorOrder.filter((floorKey) => seatsByFloor[floorKey]?.length > 0);
 
-    const visibleFloors = floorOrder.filter((floorKey) => {
-        return seatsByFloor[floorKey]?.length > 0;
-    });
+    function updateViewport(floorKey: FloorKey, element: HTMLDivElement) {
+        const nextViewport: ViewportState = {
+            scrollLeft: element.scrollLeft,
+            scrollTop: element.scrollTop,
+            clientWidth: element.clientWidth,
+            clientHeight: element.clientHeight,
+            scrollWidth: element.scrollWidth,
+            scrollHeight: element.scrollHeight,
+        };
 
-    function getLabel(seat: Seat) {
-        return seat.display_label || seat.seat_number || seat.seat_label;
+        setViewportByFloor((current) => ({ ...current, [floorKey]: nextViewport }));
     }
 
-    function isPaidFamilySeat(seat: Seat) {
-        const category = String(seat.seat_category || "").trim().toLowerCase();
-        return category === "paid" || category === "family_paid";
+    function setScrollContainer(floorKey: FloorKey, element: HTMLDivElement | null) {
+        scrollContainerRefs.current[floorKey] = element;
     }
 
     function isAllowedForCode(seat: Seat) {
         if (mode === "admin") return true;
         if (!seat.is_bookable) return false;
         if (!codeType) return true;
-
-        if (!seat.allowed_code_types || seat.allowed_code_types.length === 0) {
-            return false;
-        }
-
+        if (!seat.allowed_code_types || seat.allowed_code_types.length === 0) return false;
         return seat.allowed_code_types.includes(codeType);
     }
 
@@ -291,36 +284,33 @@ export default function TheatreSeatMap({
 
     function getSeatClass(seat: Seat) {
         const isSelected = selectedSeatIds.includes(seat.id);
-        const allowed = isAllowedForCode(seat);
+        const category = getCategory(seat);
 
-        if (isSelected) return "border-blue-700 bg-blue-600 text-white shadow-md";
+        if (isSelected) return "z-10 border-blue-700 bg-blue-600 text-white shadow";
         if (seat.status === "booked") return "border-gray-300 bg-gray-300 text-gray-500";
+        if (seat.status === "held") return "border-amber-400 bg-amber-100 text-amber-800";
         if (seat.status === "blocked" || !seat.is_bookable) return "border-gray-900 bg-gray-900 text-white";
-        if (mode === "booking" && !allowed) return "border-red-200 bg-red-50 text-red-300";
-        const category = String(seat.seat_category || "").trim().toLowerCase();
 
-        if (category === "vip") {
-            return "border-yellow-300 bg-yellow-50 text-yellow-800";
+        if (mode === "booking" && !isAllowedForCode(seat)) {
+            return "border-red-200 bg-red-50 text-red-300";
         }
 
-        if (category === "paid" || category === "family_paid") {
-            return "border-purple-500 bg-purple-100 text-purple-900";
-        }
-
-        if (category === "paid" || category === "family_paid") {
-            return "border-purple-500 bg-purple-100 text-purple-900";
-        }
+        if (category === "vip") return "border-yellow-300 bg-yellow-50 text-yellow-800";
+        if (isPaidFamilySeat(seat)) return "border-purple-500 bg-purple-100 text-purple-900";
 
         return "border-blue-500 bg-blue-100 text-sky-800";
-        
     }
 
     function getTitle(seat: Seat) {
         const booking = bookingBySeatId.get(seat.id);
-        const label = getLabel(seat);
+        const label = getSeatText(seat);
 
         if (booking) {
             return `${label}\nFull Seat ID: ${seat.seat_label}\nFloor: ${seat.floor_name || "-"}\nSection: ${seat.section || "-"}\nStatus: ${seat.status}\nCategory: ${seat.seat_category || "-"}\nBooked by: ${booking.learner_name || "Guest"}\nParent: ${booking.parent_name || "-"}\nTicket: ${booking.ticket_id || "-"}\nCode: ${booking.booking_code || "-"}`;
+        }
+
+        if (seat.status === "held") {
+            return `${label}\nThis seat is temporarily reserved while another payment is in progress.`;
         }
 
         if (mode === "booking" && !isAllowedForCode(seat)) {
@@ -332,20 +322,12 @@ export default function TheatreSeatMap({
 
     function renderFloor(floorKey: FloorKey) {
         const floorSeats = seatsByFloor[floorKey];
-        console.log(floorKey, floorSeats.length, floorSeats);
         const xs = floorSeats.map((seat) => seat.layout_x as number);
         const ys = floorSeats.map((seat) => seat.layout_y as number);
         const minX = Math.min(...xs);
         const minY = Math.min(...ys);
         const maxX = Math.max(...xs);
         const maxY = Math.max(...ys);
-        console.log(floorKey, {
-            seats: floorSeats.length,
-            minX,
-            maxX,
-            minY,
-            maxY,
-        });
         const mapWidth = Math.max(FLOOR_MIN_WIDTH, maxX - minX + SEAT_PADDING * 2 + SEAT_SIZE);
         const mapHeight =
             maxY - minY + SEAT_PADDING * 2 + SEAT_SIZE + (floorKey === "ground" ? FLOOR_EXTRA_BOTTOM_SPACE : 110);
@@ -386,83 +368,65 @@ export default function TheatreSeatMap({
                             onScroll={(event) => updateViewport(floorKey, event.currentTarget)}
                             className="max-h-[70vh] overflow-auto rounded-xl"
                         >
-                            <div
-                                className="relative rounded-xl bg-white"
-                                style={{ width: mapWidth, height: mapHeight }}
-                            >
-                       
-                   
-                        {floorKey === "ground" && (
-                            <div
-                                className="absolute flex items-center justify-center rounded-lg border border-gray-400 bg-gray-100 text-base font-bold tracking-wide text-gray-800"
-                                style={{
-                                    left: mapWidth / 2 - 190,
-                                    top: mapHeight - 85,
-                                    width: 380,
-                                    height: 58,
-                                }}
-                            >
-                                STAGE
+                            <div className="relative rounded-xl bg-white" style={{ width: mapWidth, height: mapHeight }}>
+                                {floorKey === "ground" && (
+                                    <div
+                                        className="absolute flex items-center justify-center rounded-lg border border-gray-400 bg-gray-100 text-base font-bold tracking-wide text-gray-800"
+                                        style={{ left: mapWidth / 2 - 190, top: mapHeight - 85, width: 380, height: 58 }}
+                                    >
+                                        STAGE
+                                    </div>
+                                )}
+
+                                {floorKey === "balcony" && (
+                                    <div
+                                        className="absolute flex items-center justify-center rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-700"
+                                        style={{ left: mapWidth / 2 - 95, top: mapHeight - 50, width: 190, height: 32 }}
+                                    >
+                                        BALCONY RAIL / FRONT
+                                    </div>
+                                )}
+
+                                {floorSeats.map((seat) => {
+                                    const clickable = isClickable(seat);
+                                    const left = (seat.layout_x as number) - minX + SEAT_PADDING;
+                                    const top = (seat.layout_y as number) - minY + SEAT_PADDING;
+
+                                    return (
+                                        <button
+                                            key={seat.id}
+                                            type="button"
+                                            title={getTitle(seat)}
+                                            disabled={!clickable}
+                                            onClick={() => {
+                                                if (clickable && onSeatClick) onSeatClick(seat);
+                                            }}
+                                            className={`absolute flex flex-col items-center justify-center rounded border text-[9px] font-semibold leading-none transition ${getSeatClass(
+                                                seat
+                                            )} ${clickable ? "cursor-pointer hover:z-20 hover:scale-125" : "cursor-default"}`}
+                                            style={{
+                                                left,
+                                                top,
+                                                width: SEAT_SIZE,
+                                                height: SEAT_SIZE,
+                                                transform: `rotate(${seat.rotation_deg || 0}deg)`,
+                                            }}
+                                        >
+                                            <span>{getSeatText(seat)}</span>
+                                            {isPaidFamilySeat(seat) && (
+                                                <span className="mt-0.5 text-[8px] font-bold leading-none text-purple-700">₹</span>
+                                            )}
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        )}
-
-                        {floorKey === "balcony" && (
-                            <div
-                                className="absolute flex items-center justify-center rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-700"
-                                style={{
-                                    left: mapWidth / 2 - 95,
-                                    top: mapHeight - 50,
-                                    width: 190,
-                                    height: 32,
-                                }}
-                            >
-                                BALCONY RAIL / FRONT
-                            </div>
-                        )}
-
-                        {floorSeats.map((seat) => {
-                            const clickable = isClickable(seat);
-                            const left = (seat.layout_x as number) - minX + SEAT_PADDING;
-                            const top = (seat.layout_y as number) - minY + SEAT_PADDING;
-
-                            return (
-                                <button
-                                    key={seat.id}
-                                    type="button"
-                                    title={getTitle(seat)}
-                                    disabled={!clickable}
-                                    onClick={() => {
-                                        if (clickable && onSeatClick) onSeatClick(seat);
-                                    }}
-                                    className={`absolute flex flex-col items-center justify-center rounded border text-[9px] font-semibold leading-none transition ${getSeatClass(
-                                        seat
-                                    )} ${clickable ? "cursor-pointer hover:z-20 hover:scale-125" : "cursor-default"}`}
-                                    style={{
-                                        left,
-                                        top,
-                                        width: SEAT_SIZE,
-                                        height: SEAT_SIZE,
-                                        transform: `rotate(${seat.rotation_deg || 0}deg)`,
-                                    }}
-                                >
-                                    <span>{seat.display_label || seat.seat_number}</span>
-
-                                    {isPaidFamilySeat(seat) && (
-                                        <span className="mt-0.5 text-[8px] font-bold leading-none text-purple-700">
-        ₹
-    </span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                        </div>    
+                        </div>
                     </div>
                 </div>
-                </div>        
-                    
             </section>
         );
     }
+
     if (visibleFloors.length === 0) {
         return (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-600 shadow">
@@ -480,11 +444,11 @@ export default function TheatreSeatMap({
                     <span className="h-4 w-4 rounded border border-sky-300 bg-sky-50" />
                     Regular / Available
                 </div>
+
                 <div className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded border border-purple-500 bg-purple-100" />
                     Paid / Family Guest Section
                 </div>
-                
 
                 <div className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded border border-yellow-300 bg-yellow-50" />
@@ -494,6 +458,11 @@ export default function TheatreSeatMap({
                 <div className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded bg-blue-600" />
                     Selected
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <span className="h-4 w-4 rounded bg-amber-100 border border-amber-400" />
+                    Temporarily Held
                 </div>
 
                 <div className="flex items-center gap-2">

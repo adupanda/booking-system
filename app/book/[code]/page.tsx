@@ -38,6 +38,8 @@ function ErrorCard({
 }
 
 export default async function BookPage({ params }: PageProps) {
+    await supabaseAdmin.rpc("release_expired_seat_holds");
+
     const { code } = await params;
 
     const decodedCode = decodeURIComponent(code).trim().toUpperCase();

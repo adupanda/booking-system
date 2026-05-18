@@ -5,6 +5,7 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
     try {
+        await supabaseAdmin.rpc("release_expired_seat_holds");
         const body = await request.json();
         const code = String(body.code || "").trim().toUpperCase();
 

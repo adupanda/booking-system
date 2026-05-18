@@ -78,17 +78,14 @@ export async function POST(request: Request) {
 
             await supabaseAdmin
                 .from("payment_orders")
-                .update({
-                    status: "paid_booking_failed",
-                    ticket_id: null,
-                })
+                .update({ status: "paid_booking_failed", ticket_id: null })
                 .eq("razorpay_order_id", razorpayOrderId);
 
             return NextResponse.json(
                 {
                     success: false,
                     message:
-                        "Payment succeeded, but booking could not be completed. Please contact the school team.",
+                        "Payment succeeded, but booking could not be completed. Please contact the school team immediately.",
                 },
                 { status: 500 }
             );
@@ -106,7 +103,7 @@ export async function POST(request: Request) {
                 {
                     success: false,
                     message:
-                        "Payment succeeded, but ticket generation failed. Please contact the school team.",
+                        "Payment succeeded, but ticket generation failed. Please contact the school team immediately.",
                 },
                 { status: 500 }
             );

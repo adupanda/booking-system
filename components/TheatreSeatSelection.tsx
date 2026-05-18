@@ -308,8 +308,17 @@ export default function TheatreSeatSelection({
 
             const razorpay = new window.Razorpay(options);
 
-            razorpay.on("payment.failed", function (response: any) {
+            razorpay.on("payment.failed", async function (response: any) {
                 console.error("Razorpay payment failed:", response);
+
+                if (paymentOrderResult.orderId) {
+                    await fetch("/api/payment/release-hold", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ orderId: paymentOrderResult.orderId }),
+                    }).catch(() => null);
+                }
+
                 setErrorMessage(
                     response?.error?.description ||
                         response?.error?.reason ||

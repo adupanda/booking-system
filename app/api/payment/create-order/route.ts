@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -20,11 +21,16 @@ type SelectedSeat = {
 };
 
 function isPaidFamilySeat(seat: SelectedSeat) {
-    return seat.seat_category === "paid" || seat.seat_category === "family_paid";
+    const category = String(seat.seat_category || "").trim().toLowerCase();
+    return category === "paid" || category === "family_paid";
 }
 
 export async function POST(request: Request) {
+    let createdHoldId: string | null = null;
+
     try {
+        await supabaseAdmin.rpc("release_expired_seat_holds");
+
         const body = await request.json();
 
         const code = String(body.code || "").trim().toUpperCase();
@@ -210,13 +216,42 @@ export async function POST(request: Request) {
             );
         }
 
+        createdHoldId = crypto.randomUUID();
+        const holdExpiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+        const { data: holdData, error: holdError } = await supabaseAdmin.rpc("hold_seats_for_payment", {
+            p_code: code,
+            p_seat_ids: uniqueSeatIds,
+            p_hold_id: createdHoldId,
+            p_hold_expires_at: holdExpiresAt,
+        });
+
+        if (holdError) {
+            console.error("Seat hold error:", holdError);
+            return NextResponse.json(
+                { success: false, message: holdError.message || "Could not reserve selected seats." },
+                { status: 400 }
+            );
+        }
+
+        const holdResult = holdData?.[0];
+
+        if (!holdResult || Number(holdResult.amount_paise) <= 0) {
+            await supabaseAdmin.rpc("release_seat_hold", { p_hold_id: createdHoldId });
+            return NextResponse.json(
+                { success: false, message: "Could not calculate payment for selected seats." },
+                { status: 400 }
+            );
+        }
+
         const razorpayOrder = await razorpay.orders.create({
-            amount: amountPaise,
+            amount: Number(holdResult.amount_paise),
             currency: "INR",
             receipt: `booking_${code}_${Date.now()}`.slice(0, 40),
             notes: {
                 booking_code: code,
-                paid_guest_seat_count: String(paidGuestSeatCount),
+                paid_guest_seat_count: String(holdResult.paid_guest_seat_count),
+                hold_id: createdHoldId,
             },
         });
 
@@ -225,16 +260,19 @@ export async function POST(request: Request) {
             .insert({
                 booking_code: code,
                 seat_ids: uniqueSeatIds,
-                included_seat_count: Math.min(uniqueSeatIds.length, includedRemaining),
-                paid_guest_seat_count: paidGuestSeatCount,
-                amount_paise: amountPaise,
+                included_seat_count: Number(holdResult.included_seat_count || 0),
+                paid_guest_seat_count: Number(holdResult.paid_guest_seat_count || 0),
+                amount_paise: Number(holdResult.amount_paise),
                 currency: "INR",
                 razorpay_order_id: razorpayOrder.id,
+                hold_id: createdHoldId,
+                hold_expires_at: holdExpiresAt,
                 status: "created",
             });
 
         if (insertError) {
             console.error("Payment order insert error:", insertError);
+            await supabaseAdmin.rpc("release_seat_hold", { p_hold_id: createdHoldId });
 
             return NextResponse.json(
                 { success: false, message: "Could not save payment order." },
@@ -246,14 +284,19 @@ export async function POST(request: Request) {
             success: true,
             paymentRequired: true,
             orderId: razorpayOrder.id,
-            amount: amountPaise,
+            amount: Number(holdResult.amount_paise),
             currency: "INR",
             keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            paidGuestSeatCount,
+            paidGuestSeatCount: Number(holdResult.paid_guest_seat_count || 0),
             guestSeatPriceRupees: guestSeatPricePaise / 100,
+            holdExpiresAt,
         });
     } catch (error: any) {
         console.error("Create payment order error:", error);
+
+        if (createdHoldId) {
+            await supabaseAdmin.rpc("release_seat_hold", { p_hold_id: createdHoldId });
+        }
 
         return NextResponse.json(
             {
