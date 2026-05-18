@@ -207,7 +207,7 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                         </section>
 
                         <section>
-                            <div className="mb-4 rounded-xl bg-gray-100 p-4">f
+                            <div className="mb-4 rounded-xl bg-gray-100 p-4">
                                 <h3 className="text-xl font-bold text-gray-900">Balcony / First Floor</h3>
                                 <p className="mt-1 text-sm text-gray-600">
                                     Select seats from the upper floor or balcony.

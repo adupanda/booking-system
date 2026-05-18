@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { useRef, useState } from "react";
+
 type Seat = {
     id: string;
     seat_label: string;
@@ -45,6 +47,108 @@ const SEAT_PADDING = 60;
 const FLOOR_MIN_WIDTH = 920;
 const FLOOR_EXTRA_BOTTOM_SPACE = 260;
 
+type ViewportState = {
+    scrollLeft: number;
+    scrollTop: number;
+    clientWidth: number;
+    clientHeight: number;
+    scrollWidth: number;
+    scrollHeight: number;
+};
+
+function MiniMap({
+                     floorSeats,
+                     selectedSeatIds,
+                     minX,
+                     minY,
+                     mapWidth,
+                     mapHeight,
+                     viewport,
+                 }: {
+    floorSeats: Seat[];
+    selectedSeatIds: string[];
+    minX: number;
+    minY: number;
+    mapWidth: number;
+    mapHeight: number;
+    viewport?: ViewportState;
+}) {
+    const miniWidth = 150;
+    const scale = miniWidth / mapWidth;
+    const miniHeight = Math.max(70, Math.round(mapHeight * scale));
+
+    const currentViewport = viewport || {
+        scrollLeft: 0,
+        scrollTop: 0,
+        clientWidth: Math.min(mapWidth, 360),
+        clientHeight: Math.min(mapHeight, 500),
+        scrollWidth: mapWidth,
+        scrollHeight: mapHeight,
+    };
+
+    const viewportLeft = currentViewport.scrollLeft * scale;
+    const viewportTop = currentViewport.scrollTop * scale;
+    const viewportWidth = Math.max(
+        14,
+        Math.min(currentViewport.clientWidth, currentViewport.scrollWidth) * scale
+    );
+    const viewportHeight = Math.max(
+        14,
+        Math.min(currentViewport.clientHeight, currentViewport.scrollHeight) * scale
+    );
+
+    function getMiniSeatClass(seat: Seat) {
+        if (selectedSeatIds.includes(seat.id)) return "bg-blue-600";
+        if (seat.status === "booked") return "bg-gray-400";
+        if (seat.status === "blocked" || !seat.is_bookable) return "bg-gray-900";
+        if (seat.seat_category === "vip") return "bg-yellow-400";
+        return "bg-sky-300";
+    }
+
+    return (
+        <div
+            className="pointer-events-none absolute right-3 top-3 z-40 rounded-xl border border-gray-300 bg-white/95 p-2 shadow-lg"
+            style={{ width: miniWidth + 18 }}
+        >
+            <p className="mb-1 text-center text-[10px] font-bold text-gray-700">
+                MAP VIEW
+            </p>
+
+            <div
+                className="relative overflow-hidden rounded-md border border-gray-200 bg-gray-50"
+                style={{ width: miniWidth, height: miniHeight }}
+            >
+                {floorSeats.map((seat) => {
+                    const left = ((seat.layout_x as number) - minX + SEAT_PADDING) * scale;
+                    const top = ((seat.layout_y as number) - minY + SEAT_PADDING) * scale;
+
+                    return (
+                        <span
+                            key={seat.id}
+                            className={`absolute rounded-[1px] ${getMiniSeatClass(seat)}`}
+                            style={{
+                                left,
+                                top,
+                                width: Math.max(2, SEAT_SIZE * scale),
+                                height: Math.max(2, SEAT_SIZE * scale),
+                            }}
+                        />
+                    );
+                })}
+
+                <div
+                    className="absolute rounded border-2 border-red-600 bg-red-500/10"
+                    style={{
+                        left: viewportLeft,
+                        top: viewportTop,
+                        width: viewportWidth,
+                        height: viewportHeight,
+                    }}
+                />
+            </div>
+        </div>
+    );
+}
 function getFloorKey(floorName: string | null): FloorKey {
     const value = (floorName || "").toLowerCase();
 
@@ -77,6 +181,28 @@ export default function TheatreSeatMap({
                                            codeType,
                                            onSeatClick,
                                        }: TheatreSeatMapProps) {
+    const scrollContainerRefs = useRef<Partial<Record<FloorKey, HTMLDivElement | null>>>({});
+    const [viewportByFloor, setViewportByFloor] = useState<Partial<Record<FloorKey, ViewportState>>>({});
+
+    function updateViewport(floorKey: FloorKey, element: HTMLDivElement) {
+        const nextViewport: ViewportState = {
+            scrollLeft: element.scrollLeft,
+            scrollTop: element.scrollTop,
+            clientWidth: element.clientWidth,
+            clientHeight: element.clientHeight,
+            scrollWidth: element.scrollWidth,
+            scrollHeight: element.scrollHeight,
+        };
+
+        setViewportByFloor((current) => ({
+            ...current,
+            [floorKey]: nextViewport,
+        }));
+    }
+
+    function setScrollContainer(floorKey: FloorKey, element: HTMLDivElement | null) {
+        scrollContainerRefs.current[floorKey] = element;
+    }
     const bookingBySeatId = new Map<string, BookingInfo>();
 
     for (const info of bookingInfo) {
@@ -192,11 +318,26 @@ export default function TheatreSeatMap({
                 </div>
 
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                    <div className="overflow-x-auto overflow-y-visible">
+                    <div className="relative">
+                        <MiniMap
+                            floorSeats={floorSeats}
+                            selectedSeatIds={selectedSeatIds}
+                            minX={minX}
+                            minY={minY}
+                            mapWidth={mapWidth}
+                            mapHeight={mapHeight}
+                            viewport={viewportByFloor[floorKey]}
+                        />
+
                         <div
-                            className="relative rounded-xl bg-white"
-                            style={{ width: mapWidth, height: mapHeight }}
+                            ref={(element) => setScrollContainer(floorKey, element)}
+                            onScroll={(event) => updateViewport(floorKey, event.currentTarget)}
+                            className="max-h-[70vh] overflow-auto rounded-xl"
                         >
+                            <div
+                                className="relative rounded-xl bg-white"
+                                style={{ width: mapWidth, height: mapHeight }}
+                            >
                        
                    
                         {floorKey === "ground" && (
@@ -259,6 +400,7 @@ export default function TheatreSeatMap({
                         </div>    
                     </div>
                 </div>
+                </div>        
                     
             </section>
         );
