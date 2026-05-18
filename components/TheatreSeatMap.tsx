@@ -57,6 +57,7 @@ type ViewportState = {
 };
 
 function MiniMap({
+                     floorKey,
                      floorSeats,
                      selectedSeatIds,
                      minX,
@@ -65,6 +66,7 @@ function MiniMap({
                      mapHeight,
                      viewport,
                  }: {
+    floorKey: FloorKey;
     floorSeats: Seat[];
     selectedSeatIds: string[];
     minX: number;
@@ -118,6 +120,33 @@ function MiniMap({
                 className="relative overflow-hidden rounded-md border border-gray-200 bg-gray-50"
                 style={{ width: miniWidth, height: miniHeight }}
             >
+                {floorKey === "ground" && (
+                    <div
+                        className="absolute flex items-center justify-center rounded-sm border border-gray-400 bg-gray-200 text-[6px] font-bold text-gray-700"
+                        style={{
+                            left: (mapWidth / 2 - 190) * scale,
+                            top: (mapHeight - 85) * scale,
+                            width: 380 * scale,
+                            height: 58 * scale,
+                        }}
+                    >
+                        STAGE
+                    </div>
+                )}
+
+                {floorKey === "balcony" && (
+                    <div
+                        className="absolute flex items-center justify-center rounded-sm border border-gray-300 bg-gray-200 text-[5px] font-bold text-gray-600"
+                        style={{
+                            left: (mapWidth / 2 - 95) * scale,
+                            top: (mapHeight - 50) * scale,
+                            width: 190 * scale,
+                            height: 32 * scale,
+                        }}
+                    >
+                        FRONT
+                    </div>
+                )}
                 {floorSeats.map((seat) => {
                     const left = ((seat.layout_x as number) - minX + SEAT_PADDING) * scale;
                     const top = ((seat.layout_y as number) - minY + SEAT_PADDING) * scale;
@@ -320,6 +349,7 @@ export default function TheatreSeatMap({
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
                     <div className="relative">
                         <MiniMap
+                            floorKey={floorKey}
                             floorSeats={floorSeats}
                             selectedSeatIds={selectedSeatIds}
                             minX={minX}
