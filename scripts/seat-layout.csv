@@ -1,23 +1,23 @@
 floorName,section,blockOrder,anchorX,startY,align,category,row,rowOrder,segments,offsetSeats
-ground,Ground Front Left,1,-80,320,start,regular,G,1,12,0
-ground,Ground Front Left,1,-80,354,start,regular,F,2,11,0
-ground,Ground Front Left,1,-80,388,start,regular,E,3,10,0
-ground,Ground Front Left,1,-80,422,start,regular,D,4,9,0
-ground,Ground Front Left,1,-80,456,start,regular,C,5,8,0
-ground,Ground Front Left,1,-80,490,start,regular,B,6,7,0
-ground,Ground Front Center,2,650,320,center,regular,G,1,27,0
-ground,Ground Front Center,2,650,354,center,regular,F,2,26,0
-ground,Ground Front Center,2,650,388,center,regular,E,3,25,0
-ground,Ground Front Center,2,650,422,center,regular,D,4,24,0
-ground,Ground Front Center,2,650,456,center,regular,C,5,23,0
-ground,Ground Front Center,2,650,490,center,regular,B,6,21,0
+ground,Ground Front Left,1,-180,320,start,regular,G,1,12,0
+ground,Ground Front Left,1,-180,354,start,regular,F,2,11,0
+ground,Ground Front Left,1,-180,388,start,regular,E,3,10,0
+ground,Ground Front Left,1,-180,422,start,regular,D,4,9,0
+ground,Ground Front Left,1,-180,456,start,regular,C,5,8,0
+ground,Ground Front Left,1,-180,490,start,regular,B,6,7,0
+ground,Ground Front Center,2,650,320,center,regular,G,1,27,12
+ground,Ground Front Center,2,650,354,center,regular,F,2,26,11
+ground,Ground Front Center,2,650,388,center,regular,E,3,25,10
+ground,Ground Front Center,2,650,422,center,regular,D,4,24,9
+ground,Ground Front Center,2,650,456,center,regular,C,5,23,8
+ground,Ground Front Center,2,650,490,center,regular,B,6,21,7
 ground,Ground Front Center,2,650,524,center,regular,A,7,20,0
-ground,Ground Front Right,3,1380,320,end,regular,G,1,12,0
-ground,Ground Front Right,3,1380,354,end,regular,F,2,11,0
-ground,Ground Front Right,3,1380,388,end,regular,E,3,10,0
-ground,Ground Front Right,3,1380,422,end,regular,D,4,9,0
-ground,Ground Front Right,3,1380,456,end,regular,C,5,8,0
-ground,Ground Front Right,3,1380,490,end,regular,B,6,7,0
+ground,Ground Front Right,3,1480,320,end,regular,G,1,12,39
+ground,Ground Front Right,3,1480,354,end,regular,F,2,11,37
+ground,Ground Front Right,3,1480,388,end,regular,E,3,10,35
+ground,Ground Front Right,3,1480,422,end,regular,D,4,9,33
+ground,Ground Front Right,3,1480,456,end,regular,C,5,8,31
+ground,Ground Front Right,3,1480,490,end,regular,B,6,7,28
 ground,Ground Middle Left,4,16,40,start,regular,N,1,4,0
 ground,Ground Middle Left,4,-400,74,start,regular,M,2,20,0
 ground,Ground Middle Left,4,-400,108,start,regular,L,3,20,0
@@ -25,29 +25,29 @@ ground,Ground Middle Left,4,-400,142,start,regular,K,4,19,0
 ground,Ground Middle Left,4,-400,176,start,regular,J,5,18,0
 ground,Ground Middle Left,4,-400,210,start,regular,I,6,17,0
 ground,Ground Middle Left,4,-400,244,start,regular,H,7,16,0
-ground,Ground Middle Center Left,5,522,34,end,regular,O,1,11,0
-ground,Ground Middle Center Left,5,548,68,end,regular,N,2,12,0
-ground,Ground Middle Center Left,5,600,102,end,regular,M,3,14,0
-ground,Ground Middle Center Left,5,600,136,end,regular,L,4,14,0
-ground,Ground Middle Center Left,5,574,170,end,regular,K,5,13,0
-ground,Ground Middle Center Left,5,574,204,end,regular,J,6,13,0
-ground,Ground Middle Center Left,5,574,238,end,regular,I,7,13,0
-ground,Ground Middle Center Left,5,548,272,end,regular,H,8,12,0
-ground,Ground Middle Center Right,6,780,34,start,regular,O,1,11,0
-ground,Ground Middle Center Right,6,754,68,start,regular,N,2,12,0
-ground,Ground Middle Center Right,6,702,102,start,regular,M,3,14,0
-ground,Ground Middle Center Right,6,702,136,start,regular,L,4,14,0
-ground,Ground Middle Center Right,6,728,170,start,regular,K,5,13,0
-ground,Ground Middle Center Right,6,728,204,start,regular,J,6,13,0
-ground,Ground Middle Center Right,6,728,238,start,regular,I,7,13,0
-ground,Ground Middle Center Right,6,754,272,start,regular,H,8,12,0
-ground,Ground Middle Right,7,1284,40,end,regular,N,1,4,0
-ground,Ground Middle Right,7,1700,74,end,regular,M,2,20,0
-ground,Ground Middle Right,7,1700,108,end,regular,L,3,20,0
-ground,Ground Middle Right,7,1700,142,end,regular,K,4,19,0
-ground,Ground Middle Right,7,1700,176,end,regular,J,5,18,0
-ground,Ground Middle Right,7,1700,210,end,regular,I,6,17,0
-ground,Ground Middle Right,7,1700,244,end,regular,H,7,16,0
+ground,Ground Middle Center Left,5,522,6,end,regular,O,1,11,0
+ground,Ground Middle Center Left,5,548,40,end,regular,N,2,12,4
+ground,Ground Middle Center Left,5,600,74,end,regular,M,3,14,20
+ground,Ground Middle Center Left,5,600,108,end,regular,L,4,14,20
+ground,Ground Middle Center Left,5,574,142,end,regular,K,5,13,19
+ground,Ground Middle Center Left,5,574,176,end,regular,J,6,13,18
+ground,Ground Middle Center Left,5,574,210,end,regular,I,7,13,17
+ground,Ground Middle Center Left,5,548,244,end,regular,H,8,12,16
+ground,Ground Middle Center Right,6,780,6,start,regular,O,1,11,11
+ground,Ground Middle Center Right,6,754,40,start,regular,N,2,12,16
+ground,Ground Middle Center Right,6,702,74,start,regular,M,3,14,34
+ground,Ground Middle Center Right,6,702,108,start,regular,L,4,14,34
+ground,Ground Middle Center Right,6,728,142,start,regular,K,5,13,32
+ground,Ground Middle Center Right,6,728,176,start,regular,J,6,13,31
+ground,Ground Middle Center Right,6,728,210,start,regular,I,7,13,30
+ground,Ground Middle Center Right,6,754,244,start,regular,H,8,12,28
+ground,Ground Middle Right,7,1284,40,end,regular,N,1,4,28
+ground,Ground Middle Right,7,1700,74,end,regular,M,2,20,48
+ground,Ground Middle Right,7,1700,108,end,regular,L,3,20,48
+ground,Ground Middle Right,7,1700,142,end,regular,K,4,19,45
+ground,Ground Middle Right,7,1700,176,end,regular,J,5,18,44
+ground,Ground Middle Right,7,1700,210,end,regular,I,6,17,43
+ground,Ground Middle Right,7,1700,244,end,regular,H,7,16,40
 balcony,Balcony Far Left,10,-567,68,start,regular,I,1,12,0
 balcony,Balcony Far Left,10,-567,102,start,regular,H,2,12,0
 balcony,Balcony Far Left,10,-567,136,start,regular,G,3,12,0
@@ -58,38 +58,38 @@ balcony,Balcony Far Left,10,-567,272,start,regular,C,7,12,0
 balcony,Balcony Far Left,10,-567,340,start,regular,B,8,5,0
 balcony,Balcony Far Left,10,-567,374,start,regular,A,9,2,0
 balcony,Balcony Left Inner,11,356,34,end,regular,J,1,6 | gap:0.5 | 3,0
-balcony,Balcony Left Inner,11,356,68,end,regular,I,2,20 | gap:0.5 | 3,0
-balcony,Balcony Left Inner,11,343,102,end,regular,H,3,4 | gap:1 | 11 | gap:3.5 | 2,0
-balcony,Balcony Left Inner,11,356,136,end,regular,G,4,3 | gap:1.5| 10 | gap:4 | 3,0
-balcony,Balcony Left Inner,11,343,170,end,regular,F,5,3 | gap:1.5 | 9 | gap:5.5 | 2,0
-balcony,Balcony Left Inner,11,343,204,end,regular,E,6,2 | gap:2 | 9 | gap:5.5 | 2,0
-balcony,Balcony Left Inner,11,330,238,end,regular,D,7,2 | gap:2 | 8 | gap:7 | 1,0
-balcony,Balcony Left Inner,11,330,272,end,regular,C,8,2 | gap:17 | 1,0
-balcony,Balcony Center,12,650,0,center,regular,L1,1,10,0
-balcony,Balcony Center,12,650,34,center,regular,L2,2,5 | gap:7 | 5,0
-balcony,Balcony Center,12,650,68,center,regular,K,3,20,0
-balcony,Balcony Center,12,650,102,center,regular,J,4,20,0
-balcony,Balcony Center,12,650,136,center,regular,I,5,20,0
-balcony,Balcony Center,12,650,170,center,regular,H,6,20,0
-balcony,Balcony Center,12,650,204,center,regular,G,7,20,0
-balcony,Balcony Center,12,650,238,center,regular,F,8,20,0
-balcony,Balcony Center,12,650,272,center,regular,E,9,20,0
-balcony,Balcony Center,12,650,306,center,regular,D,10,20,0
-balcony,Balcony Center,12,650,340,center,regular,C,11,20,0
-balcony,Balcony Right Inner,13,944,34,start,regular,J,1,4 | gap:0.5 | 6,0
-balcony,Balcony Right Inner,13,944,68,start,regular,I,2,4 | gap:0.5 | 19,0
-balcony,Balcony Right Inner,13,944,102,start,regular,H,3,3 | gap:1.5 | 15,0
-balcony,Balcony Right Inner,13,944,136,start,regular,G,4,3 | gap:1.5 | 10 | gap:2 | 3,0
-balcony,Balcony Right Inner,13,944,170,start,regular,F,5,2 | gap:2.5 | 10 | gap:2 | 3,0
-balcony,Balcony Right Inner,13,944,204,start,regular,E,6,2 | gap:2.5 | 9 | gap:3.5 | 2,0
-balcony,Balcony Right Inner,13,944,238,start,regular,D,7,2 | gap:2.5|8|gap:5|1,0
-balcony,Balcony Right Inner,13,944,272,start,regular,C,8,2|gap:15.5|1,0
-balcony,Balcony Far Right,14,1867,68,end,regular,I,1,12,0
-balcony,Balcony Far Right,14,1867,102,end,regular,H,2,12,0
-balcony,Balcony Far Right,14,1867,136,end,regular,G,3,12,0
-balcony,Balcony Far Right,14,1867,170,end,regular,F,4,12,0
-balcony,Balcony Far Right,14,1867,204,end,regular,E,5,13,0
-balcony,Balcony Far Right,14,1867,238,end,regular,D,6,13,0
-balcony,Balcony Far Right,14,1867,272,end,regular,C,7,12,0
-balcony,Balcony Far Right,14,1867,340,end,regular,B,8,5,0
-balcony,Balcony Far Right,14,1867,374,end,regular,A,9,2,0
+balcony,Balcony Left Inner,11,356,68,end,regular,I,2,20 | gap:0.5 | 3,12
+balcony,Balcony Left Inner,11,343,102,end,regular,H,3,4 | gap:1 | 11 | gap:3.5 | 2,12
+balcony,Balcony Left Inner,11,356,136,end,regular,G,4,3 | gap:1.5| 10 | gap:4 | 3,12
+balcony,Balcony Left Inner,11,343,170,end,regular,F,5,3 | gap:1.5 | 9 | gap:5.5 | 2,12
+balcony,Balcony Left Inner,11,343,204,end,regular,E,6,2 | gap:2 | 9 | gap:5.5 | 2,13
+balcony,Balcony Left Inner,11,330,238,end,regular,D,7,2 | gap:2 | 8 | gap:7 | 1,13
+balcony,Balcony Left Inner,11,330,272,end,regular,C,8,2 | gap:17 | 1,12
+balcony,Balcony Center,12,650,-68,center,regular,M,1,10,0
+balcony,Balcony Center,12,650,-34,center,regular,L,2,5 | gap:7 | 5,0
+balcony,Balcony Center,12,650,0,center,regular,K,3,20,0
+balcony,Balcony Center,12,650,34,center,regular,J,4,20,9
+balcony,Balcony Center,12,650,68,center,regular,I,5,20,35
+balcony,Balcony Center,12,650,102,center,regular,H,6,20,29
+balcony,Balcony Center,12,650,136,center,regular,G,7,20,28
+balcony,Balcony Center,12,650,170,center,regular,F,8,20,26
+balcony,Balcony Center,12,650,204,center,regular,E,9,20,26
+balcony,Balcony Center,12,650,238,center,regular,D,10,20,24
+balcony,Balcony Center,12,650,272,center,regular,C,11,20,15
+balcony,Balcony Right Inner,13,944,34,start,regular,J,1,4 | gap:0.5 | 6,29
+balcony,Balcony Right Inner,13,944,68,start,regular,I,2,4 | gap:0.5 | 19,55
+balcony,Balcony Right Inner,13,944,102,start,regular,H,3,3 | gap:1.5 | 15,49
+balcony,Balcony Right Inner,13,944,136,start,regular,G,4,3 | gap:1.5 | 10 | gap:2 | 3,48
+balcony,Balcony Right Inner,13,944,170,start,regular,F,5,2 | gap:2.5 | 10 | gap:2 | 3,46
+balcony,Balcony Right Inner,13,944,204,start,regular,E,6,2 | gap:2.5 | 9 | gap:3.5 | 2,46
+balcony,Balcony Right Inner,13,944,238,start,regular,D,7,2 | gap:2.5|8|gap:5|1,44
+balcony,Balcony Right Inner,13,944,272,start,regular,C,8,2|gap:15.5|1,35
+balcony,Balcony Far Right,14,1867,68,end,regular,I,1,12,78
+balcony,Balcony Far Right,14,1867,102,end,regular,H,2,12,67
+balcony,Balcony Far Right,14,1867,136,end,regular,G,3,12,64
+balcony,Balcony Far Right,14,1867,170,end,regular,F,4,12,61
+balcony,Balcony Far Right,14,1867,204,end,regular,E,5,13,59
+balcony,Balcony Far Right,14,1867,238,end,regular,D,6,13,55
+balcony,Balcony Far Right,14,1867,272,end,regular,C,7,12,38
+balcony,Balcony Far Right,14,1867,340,end,regular,B,8,5,5
+balcony,Balcony Far Right,14,1867,374,end,regular,A,9,2,2

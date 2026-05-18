@@ -1,8 +1,14 @@
-﻿"use client";
+"use client";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import TheatreSeatMap from "@/components/TheatreSeatMap";
+
+declare global {
+    interface Window {
+        Razorpay?: any;
+    }
+}
 
 type Seat = {
     id: string;
@@ -33,6 +39,10 @@ type BookingCode = {
     used_seats: number;
     code_type: string;
     status: string;
+    included_seat_limit?: number | null;
+    allow_paid_extra_seats?: boolean | null;
+    guest_seat_price_paise?: number | null;
+    max_paid_extra_seats?: number | null;
 };
 
 type EventData = {
@@ -46,7 +56,41 @@ type Props = {
     bookingCode: BookingCode;
     event: EventData;
     seats: Seat[];
+    existingTicketId?: string | null;
 };
+
+type PaymentOrderResponse = {
+    success?: boolean;
+    message?: string;
+    paymentRequired?: boolean;
+    orderId?: string;
+    amount?: number;
+    currency?: string;
+    keyId?: string;
+    paidGuestSeatCount?: number;
+    guestSeatPriceRupees?: number;
+};
+
+type BookingResponse = {
+    success?: boolean;
+    message?: string;
+    ticketId?: string;
+};
+
+function loadRazorpayScript() {
+    return new Promise<boolean>((resolve) => {
+        if (window.Razorpay) {
+            resolve(true);
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.onload = () => resolve(true);
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+    });
+}
 
 function getSeatSortValue(seat: Seat) {
     return [
@@ -57,14 +101,26 @@ function getSeatSortValue(seat: Seat) {
     ].join("-");
 }
 
-export default function TheatreSeatSelection({ bookingCode, event, seats }: Props) {
+function isPaidFamilySeat(seat: Seat) {
+    const category = String(seat.seat_category || "").trim().toLowerCase();
+    return category === "paid" || category === "family_paid";
+}
+
+export default function TheatreSeatSelection({
+    bookingCode,
+    event,
+    seats,
+    existingTicketId,
+}: Props) {
     const router = useRouter();
 
     const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
-    const remainingSeats = Math.max(bookingCode.max_seats - bookingCode.used_seats, 0);
+    const includedSeatLimit = Number(bookingCode.included_seat_limit ?? 2);
+    const allowPaidExtraSeats = Boolean(bookingCode.allow_paid_extra_seats ?? true);
+    const guestSeatPricePaise = Number(bookingCode.guest_seat_price_paise ?? 50000);
 
     const selectedSeats = useMemo(() => {
         return seats
@@ -72,18 +128,38 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
             .sort((a, b) => getSeatSortValue(a).localeCompare(getSeatSortValue(b)));
     }, [seats, selectedSeatIds]);
 
+    const availableSelectableSeats = useMemo(() => {
+        return seats.filter((seat) => seat.status === "available" && isSeatAllowedForCode(seat)).length;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [seats, bookingCode.code_type]);
+
+    const includedSeatsAlreadyUsed = Math.min(Number(bookingCode.used_seats || 0), includedSeatLimit);
+    const includedSeatsRemaining = Math.max(includedSeatLimit - includedSeatsAlreadyUsed, 0);
+
+    const maxSelectable = allowPaidExtraSeats ? availableSelectableSeats : includedSeatsRemaining;
+
+    const selectedPaidGuestSeatCount = getPaidGuestSeatCount(selectedSeats);
+    const selectedPaymentAmountPaise = selectedPaidGuestSeatCount * guestSeatPricePaise;
+    const selectedPaymentAmountRupees = selectedPaymentAmountPaise / 100;
+
     function isSeatAllowedForCode(seat: Seat) {
         if (!seat.is_bookable) return false;
         if (!seat.allowed_code_types || seat.allowed_code_types.length === 0) return false;
         return seat.allowed_code_types.includes(bookingCode.code_type);
     }
 
-    function handleSeatClick(seat: Seat) {
-        if (remainingSeats <= 0) {
-            setErrorMessage("This booking code has no seats remaining.");
-            return;
-        }
+    function getPaidGuestSeatCount(nextSelectedSeats: Seat[]) {
+        return Math.max(nextSelectedSeats.length - includedSeatsRemaining, 0);
+    }
 
+    function canSelectionPassPaidSectionRule(nextSelectedSeats: Seat[]) {
+        const paidGuestSeatCount = getPaidGuestSeatCount(nextSelectedSeats);
+        const selectedPaidFamilySeats = nextSelectedSeats.filter(isPaidFamilySeat).length;
+
+        return selectedPaidFamilySeats >= paidGuestSeatCount;
+    }
+
+    function handleSeatClick(seat: Seat) {
         if (seat.status !== "available") return;
         if (!isSeatAllowedForCode(seat)) return;
 
@@ -95,13 +171,51 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
             return;
         }
 
-        if (selectedSeatIds.length >= remainingSeats) {
-            setErrorMessage(`You can only select ${remainingSeats} seat(s).`);
+        if (selectedSeatIds.length >= maxSelectable) {
+            setErrorMessage("No more seats can be selected.");
+            return;
+        }
+
+        const nextSelectedSeatIds = [...selectedSeatIds, seat.id];
+        const nextSelectedSeats = seats.filter((currentSeat) => nextSelectedSeatIds.includes(currentSeat.id));
+
+        if (!canSelectionPassPaidSectionRule(nextSelectedSeats)) {
+            setErrorMessage("Extra guest seats must be selected from the paid/family seating section.");
             return;
         }
 
         setErrorMessage("");
-        setSelectedSeatIds((current) => [...current, seat.id]);
+        setSelectedSeatIds(nextSelectedSeatIds);
+    }
+
+    async function readJsonResponse<T>(response: Response): Promise<T> {
+        const responseText = await response.text();
+
+        try {
+            return JSON.parse(responseText) as T;
+        } catch {
+            console.error("Non-JSON response:", responseText);
+            throw new Error("The server returned an invalid response.");
+        }
+    }
+
+    async function confirmFreeBooking() {
+        const response = await fetch("/api/book", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                code: bookingCode.code,
+                seatIds: selectedSeatIds,
+            }),
+        });
+
+        const result = await readJsonResponse<BookingResponse>(response);
+
+        if (!response.ok || !result.success || !result.ticketId) {
+            throw new Error(result.message || "Could not complete booking.");
+        }
+
+        router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
     }
 
     async function handleConfirm() {
@@ -110,11 +224,16 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
             return;
         }
 
+        if (!canSelectionPassPaidSectionRule(selectedSeats)) {
+            setErrorMessage("Extra guest seats must be selected from the paid/family seating section.");
+            return;
+        }
+
         setLoading(true);
         setErrorMessage("");
 
         try {
-            const response = await fetch("/api/book", {
+            const paymentOrderResponse = await fetch("/api/payment/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -123,27 +242,86 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                 }),
             });
 
-            const responseText = await response.text();
-            let result: { success?: boolean; message?: string; ticketId?: string };
+            const paymentOrderResult = await readJsonResponse<PaymentOrderResponse>(paymentOrderResponse);
 
-            try {
-                result = JSON.parse(responseText);
-            } catch {
-                console.error("Non-JSON response from /api/book:", responseText);
-                setErrorMessage("The booking API returned an invalid response.");
+            if (!paymentOrderResponse.ok || !paymentOrderResult.success) {
+                throw new Error(paymentOrderResult.message || "Could not start payment.");
+            }
+
+            if (!paymentOrderResult.paymentRequired) {
+                await confirmFreeBooking();
                 return;
             }
 
-            if (!response.ok || !result.success || !result.ticketId) {
-                setErrorMessage(result.message || "Could not complete booking.");
-                return;
+            const razorpayLoaded = await loadRazorpayScript();
+
+            if (!razorpayLoaded || !window.Razorpay) {
+                throw new Error("Could not load payment gateway. Please try again.");
             }
 
-            router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
-        } catch (error) {
+            const options = {
+                key: paymentOrderResult.keyId,
+                amount: paymentOrderResult.amount,
+                currency: paymentOrderResult.currency,
+                name: event.name,
+                description: `${paymentOrderResult.paidGuestSeatCount} paid guest seat(s)`,
+                order_id: paymentOrderResult.orderId,
+                handler: async function (response: any) {
+                    try {
+                        const verifyResponse = await fetch("/api/payment/verify", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                            }),
+                        });
+
+                        const verifyResult = await readJsonResponse<BookingResponse>(verifyResponse);
+
+                        if (!verifyResponse.ok || !verifyResult.success || !verifyResult.ticketId) {
+                            throw new Error(
+                                verifyResult.message || "Payment completed, but booking could not be confirmed."
+                            );
+                        }
+
+                        router.push(`/ticket/${encodeURIComponent(verifyResult.ticketId)}`);
+                    } catch (error: any) {
+                        console.error(error);
+                        setErrorMessage(error?.message || "Payment completed, but booking could not be confirmed.");
+                        setLoading(false);
+                    }
+                },
+                prefill: {
+                    name: bookingCode.parent_name || bookingCode.learner_name || "",
+                },
+                theme: {
+                    color: "#111827",
+                },
+                modal: {
+                    ondismiss: function () {
+                        setLoading(false);
+                    },
+                },
+            };
+
+            const razorpay = new window.Razorpay(options);
+
+            razorpay.on("payment.failed", function (response: any) {
+                console.error("Razorpay payment failed:", response);
+                setErrorMessage(
+                    response?.error?.description ||
+                        response?.error?.reason ||
+                        "Payment failed. Please try again."
+                );
+                setLoading(false);
+            });
+
+            razorpay.open();
+        } catch (error: any) {
             console.error(error);
-            setErrorMessage("Could not complete booking. Please try again.");
-        } finally {
+            setErrorMessage(error?.message || "Could not complete booking. Please try again.");
             setLoading(false);
         }
     }
@@ -170,12 +348,41 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                             <p className="text-gray-700">Parent / Contact: {bookingCode.parent_name}</p>
                         )}
 
-                        <p className="mt-2 text-gray-700">
-                            You can select up to <span className="font-bold">{remainingSeats}</span> seat
-                            {remainingSeats === 1 ? "" : "s"}.
-                        </p>
+                        {existingTicketId && (
+                            <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+                                <p className="font-semibold">Existing ticket found</p>
 
-                        <p className="text-sm text-gray-500">Code type: {bookingCode.code_type}</p>
+                                <p className="mt-1">
+                                    This code already has a confirmed ticket. You can view it anytime, or continue
+                                    booking additional guest seats below.
+                                </p>
+
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/ticket/${encodeURIComponent(existingTicketId)}`)}
+                                    className="mt-3 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white"
+                                >
+                                    View Existing Ticket
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="mt-3 rounded-lg border border-purple-200 bg-purple-50 p-3 text-sm text-purple-950">
+                            <p className="font-semibold">Important seating rule</p>
+                            <p className="mt-1">
+                                This booking code includes {includedSeatLimit} parent seat
+                                {includedSeatLimit === 1 ? "" : "s"}. These can be booked without payment.
+                            </p>
+                            <p className="mt-1">
+                                Extra guest seats can be booked now or later by entering the same code again. Extra
+                                guest seats are paid and must be selected from the purple paid/family seating sections.
+                            </p>
+                            <p className="mt-1 font-semibold">
+                                If you want parents and guests to sit together, please choose seats from the purple sections.
+                            </p>
+                        </div>
+
+                        <p className="mt-3 text-sm text-gray-500">Code type: {bookingCode.code_type}</p>
                     </div>
                 </div>
 
@@ -191,16 +398,14 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                         <section>
                             <div className="mb-4 rounded-xl bg-gray-100 p-4">
                                 <h3 className="text-xl font-bold text-gray-900">Ground Floor</h3>
-                                <p className="mt-1 text-sm text-gray-600">
-                                    Select seats from the main floor.
-                                </p>
+                                <p className="mt-1 text-sm text-gray-600">Select seats from the main floor.</p>
                             </div>
 
                             <TheatreSeatMap
                                 seats={seats.filter((seat) => seat.floor_name === "ground")}
                                 mode="booking"
                                 selectedSeatIds={selectedSeatIds}
-                                maxSelectable={remainingSeats}
+                                maxSelectable={maxSelectable}
                                 codeType={bookingCode.code_type}
                                 onSeatClick={handleSeatClick}
                             />
@@ -209,16 +414,14 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                         <section>
                             <div className="mb-4 rounded-xl bg-gray-100 p-4">
                                 <h3 className="text-xl font-bold text-gray-900">Balcony / First Floor</h3>
-                                <p className="mt-1 text-sm text-gray-600">
-                                    Select seats from the upper floor or balcony.
-                                </p>
+                                <p className="mt-1 text-sm text-gray-600">Select seats from the upper floor or balcony.</p>
                             </div>
 
                             <TheatreSeatMap
                                 seats={seats.filter((seat) => seat.floor_name === "balcony")}
                                 mode="booking"
                                 selectedSeatIds={selectedSeatIds}
-                                maxSelectable={remainingSeats}
+                                maxSelectable={maxSelectable}
                                 codeType={bookingCode.code_type}
                                 onSeatClick={handleSeatClick}
                             />
@@ -228,12 +431,22 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
 
                 <div className="sticky bottom-0 z-30 mt-6 rounded-2xl bg-white p-6 shadow">
                     <p className="font-semibold text-gray-900">
-                        Selected Seats: {selectedSeats.length > 0 ? selectedSeats.map((seat) => seat.display_label || seat.seat_label).join(", ") : "None"}
+                        Selected Seats:{" "}
+                        {selectedSeats.length > 0
+                            ? selectedSeats.map((seat) => seat.display_label || seat.seat_label).join(", ")
+                            : "None"}
                     </p>
 
                     <p className="mt-1 text-sm text-gray-500">
-                        {selectedSeats.length} / {remainingSeats} selected
+                        {selectedSeats.length} selected · Included parent seats remaining: {includedSeatsRemaining}
                     </p>
+
+                    {selectedPaidGuestSeatCount > 0 && (
+                        <p className="mt-1 text-sm font-semibold text-purple-700">
+                            Paid guest seats selected: {selectedPaidGuestSeatCount} · Amount: ₹
+                            {selectedPaymentAmountRupees}
+                        </p>
+                    )}
 
                     {errorMessage && (
                         <div className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{errorMessage}</div>
@@ -242,10 +455,14 @@ export default function TheatreSeatSelection({ bookingCode, event, seats }: Prop
                     <button
                         type="button"
                         onClick={handleConfirm}
-                        disabled={selectedSeats.length === 0 || loading || remainingSeats <= 0}
+                        disabled={selectedSeats.length === 0 || loading}
                         className="mt-4 w-full rounded-lg bg-black px-4 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                        {loading ? "Confirming..." : "Confirm Booking"}
+                        {loading
+                            ? "Confirming..."
+                            : selectedPaidGuestSeatCount > 0
+                              ? `Pay ₹${selectedPaymentAmountRupees} & Confirm Booking`
+                              : "Confirm Booking"}
                     </button>
                 </div>
             </div>

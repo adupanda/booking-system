@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TheatreSeatSelection from "@/components/TheatreSeatSelection";
 
@@ -7,6 +7,35 @@ type PageProps = {
         code: string;
     }>;
 };
+
+function ErrorCard({
+    title,
+    message,
+    href = "/",
+    buttonText = "Go Back",
+}: {
+    title: string;
+    message: string;
+    href?: string;
+    buttonText?: string;
+}) {
+    return (
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+            <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
+                <h1 className="text-2xl font-bold text-red-600">{title}</h1>
+
+                <p className="mt-3 text-gray-600">{message}</p>
+
+                <Link
+                    href={href}
+                    className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
+                >
+                    {buttonText}
+                </Link>
+            </div>
+        </main>
+    );
+}
 
 export default async function BookPage({ params }: PageProps) {
     const { code } = await params;
@@ -21,98 +50,29 @@ export default async function BookPage({ params }: PageProps) {
 
     if (bookingCodeError || !bookingCode) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
-                        Invalid booking code
-                    </h1>
-
-                    <p className="mt-3 text-gray-600">
-                        This booking code could not be found.
-                    </p>
-
-                    <Link
-                        href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
-                    >
-                        Try Again
-                    </Link>
-                </div>
-            </main>
-        );
-    }
-    
-    const remainingSeats =
-        Number(bookingCode.max_seats || 0) - Number(bookingCode.used_seats || 0);
-
-    if (bookingCode.status === "booked" || remainingSeats <= 0) {
-        return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
-                        Code already used
-                    </h1>
-
-                    <p className="mt-3 text-gray-600">
-                        This booking code has already been used.
-                    </p>
-
-                    <Link
-                        href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
-                    >
-                        Go Back
-                    </Link>
-                </div>
-            </main>
+            <ErrorCard
+                title="Invalid booking code"
+                message="This booking code could not be found."
+                buttonText="Try Again"
+            />
         );
     }
 
     if (bookingCode.status === "cancelled") {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
-                        Code cancelled
-                    </h1>
-
-                    <p className="mt-3 text-gray-600">
-                        This booking code has been cancelled by the school.
-                    </p>
-
-                    <Link
-                        href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
-                    >
-                        Go Back
-                    </Link>
-                </div>
-            </main>
+            <ErrorCard
+                title="Code cancelled"
+                message="This booking code has been cancelled by the school."
+            />
         );
     }
 
-    
-
-    if (remainingSeats <= 0) {
+    if (bookingCode.status === "booked" && !bookingCode.allow_paid_extra_seats) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
-                        No seats remaining
-                    </h1>
-
-                    <p className="mt-3 text-gray-600">
-                        This booking code has no seats remaining.
-                    </p>
-
-                    <Link
-                        href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
-                    >
-                        Go Back
-                    </Link>
-                </div>
-            </main>
+            <ErrorCard
+                title="Code already used"
+                message="This booking code has already been used."
+            />
         );
     }
 
@@ -124,58 +84,30 @@ export default async function BookPage({ params }: PageProps) {
 
     if (eventError || !event) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
-                        Event not found
-                    </h1>
-
-                    <p className="mt-3 text-gray-600">
-                        This booking code is not linked to a valid event.
-                    </p>
-
-                    <Link
-                        href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
-                    >
-                        Go Back
-                    </Link>
-                </div>
-            </main>
+            <ErrorCard
+                title="Event not found"
+                message="This booking code is not linked to a valid event."
+            />
         );
     }
 
+    const { data: existingBooking } = await supabaseAdmin
+        .from("bookings")
+        .select("ticket_id")
+        .eq("booking_code_id", bookingCode.id)
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
     const { data: seats, error: seatsError } = await fetchAllSeatsForEvent(event.id);
-    console.log("Total seats loaded:", seats?.length);
-    console.log("Ground seats loaded:", seats?.filter((s) => s.floor_name === "ground").length);
-    console.log("Balcony seats loaded:", seats?.filter((s) => s.floor_name === "balcony").length);
-    console.log(
-        "Ground K seats:",
-        seats
-            ?.filter((s) => s.floor_name === "ground" && s.row_name === "K")
-            .map((s) => s.display_label || s.seat_label)
-    );
 
     if (seatsError || !seats) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
-                        Could not load seats
-                    </h1>
-
-                    <p className="mt-3 text-gray-600">
-                        Please try again later.
-                    </p>
-
-                    <Link
-                        href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
-                    >
-                        Go Back
-                    </Link>
-                </div>
-            </main>
+            <ErrorCard
+                title="Could not load seats"
+                message="Please try again later."
+            />
         );
     }
 
@@ -184,6 +116,7 @@ export default async function BookPage({ params }: PageProps) {
             bookingCode={bookingCode}
             event={event}
             seats={seats}
+            existingTicketId={existingBooking?.ticket_id || null}
         />
     );
 }

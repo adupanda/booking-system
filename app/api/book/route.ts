@@ -1,5 +1,7 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+export const runtime = "nodejs";
 
 export async function POST(request: Request) {
     try {
@@ -25,6 +27,7 @@ export async function POST(request: Request) {
         const { data, error } = await supabaseAdmin.rpc("confirm_seat_booking", {
             p_code: code,
             p_seat_ids: seatIds,
+            p_payment_order_id: null,
         });
 
         if (error) {

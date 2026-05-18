@@ -100,10 +100,14 @@ function MiniMap({
     );
 
     function getMiniSeatClass(seat: Seat) {
+        const category = String(seat.seat_category || "").trim().toLowerCase();
+
         if (selectedSeatIds.includes(seat.id)) return "bg-blue-600";
         if (seat.status === "booked") return "bg-gray-400";
         if (seat.status === "blocked" || !seat.is_bookable) return "bg-gray-900";
-        if (seat.seat_category === "vip") return "bg-yellow-400";
+        if (category === "vip") return "bg-yellow-400";
+        if (category === "paid" || category === "family_paid") return "bg-purple-400";
+
         return "bg-sky-300";
     }
 
@@ -258,7 +262,12 @@ export default function TheatreSeatMap({
     });
 
     function getLabel(seat: Seat) {
-        return seat.display_label || seat.seat_label;
+        return seat.display_label || seat.seat_number || seat.seat_label;
+    }
+
+    function isPaidFamilySeat(seat: Seat) {
+        const category = String(seat.seat_category || "").trim().toLowerCase();
+        return category === "paid" || category === "family_paid";
     }
 
     function isAllowedForCode(seat: Seat) {
@@ -288,9 +297,22 @@ export default function TheatreSeatMap({
         if (seat.status === "booked") return "border-gray-300 bg-gray-300 text-gray-500";
         if (seat.status === "blocked" || !seat.is_bookable) return "border-gray-900 bg-gray-900 text-white";
         if (mode === "booking" && !allowed) return "border-red-200 bg-red-50 text-red-300";
-        if (seat.seat_category === "vip") return "border-yellow-300 bg-yellow-50 text-yellow-800";
+        const category = String(seat.seat_category || "").trim().toLowerCase();
+
+        if (category === "vip") {
+            return "border-yellow-300 bg-yellow-50 text-yellow-800";
+        }
+
+        if (category === "paid" || category === "family_paid") {
+            return "border-purple-500 bg-purple-100 text-purple-900";
+        }
+
+        if (category === "paid" || category === "family_paid") {
+            return "border-purple-500 bg-purple-100 text-purple-900";
+        }
 
         return "border-blue-500 bg-blue-100 text-sky-800";
+        
     }
 
     function getTitle(seat: Seat) {
@@ -412,7 +434,7 @@ export default function TheatreSeatMap({
                                     onClick={() => {
                                         if (clickable && onSeatClick) onSeatClick(seat);
                                     }}
-                                    className={`absolute flex items-center justify-center rounded border text-[9px] font-semibold leading-none transition ${getSeatClass(
+                                    className={`absolute flex flex-col items-center justify-center rounded border text-[9px] font-semibold leading-none transition ${getSeatClass(
                                         seat
                                     )} ${clickable ? "cursor-pointer hover:z-20 hover:scale-125" : "cursor-default"}`}
                                     style={{
@@ -423,7 +445,13 @@ export default function TheatreSeatMap({
                                         transform: `rotate(${seat.rotation_deg || 0}deg)`,
                                     }}
                                 >
-                                    {seat.display_label || seat.seat_number}
+                                    <span>{seat.display_label || seat.seat_number}</span>
+
+                                    {isPaidFamilySeat(seat) && (
+                                        <span className="mt-0.5 text-[8px] font-bold leading-none text-purple-700">
+        ₹
+    </span>
+                                    )}
                                 </button>
                             );
                         })}
@@ -451,6 +479,10 @@ export default function TheatreSeatMap({
                 <div className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded border border-sky-300 bg-sky-50" />
                     Regular / Available
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="h-4 w-4 rounded border border-purple-500 bg-purple-100" />
+                    Paid / Family Guest Section
                 </div>
                 
 

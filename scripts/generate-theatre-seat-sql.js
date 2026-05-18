@@ -10,7 +10,7 @@ const SEAT_PITCH = 26;
 const SEAT_SIZE = 20;
 
 function allowedCodeTypesForCategory(category) {
-    if (category === "paid") return ["paid", "vip", "staff"];
+    if (category === "paid") return ["regular", "paid", "vip", "staff"];
     if (category === "vip") return ["vip", "staff"];
     if (category === "staff") return ["staff"];
     if (category === "blocked") return [];
@@ -79,17 +79,15 @@ function getRowWidth(segments) {
 
 function getRowStartX(row) {
     const rowWidth = getRowWidth(row.segments);
-    const offsetPx = row.offsetSeats * SEAT_PITCH;
-
     if (row.align === "center") {
-        return row.anchorX - rowWidth / 2 + offsetPx;
+        return row.anchorX - rowWidth / 2;
     }
 
     if (row.align === "end") {
-        return row.anchorX - rowWidth + offsetPx;
+        return row.anchorX - rowWidth;
     }
 
-    return row.anchorX + offsetPx;
+    return row.anchorX;
 }
 
 function validateNoOverlaps(seats) {
@@ -161,7 +159,7 @@ for (const rowDef of rows) {
     const sectionPrefix = makeBlockPrefix(rowDef.section);
     let xCursor = getRowStartX(rowDef);
     const y = rowDef.startY;
-    let seatNumber = 1;
+    let seatNumber = Number(rowDef.offsetSeats || 0) + 1;
 
     for (const segment of rowDef.segments) {
         if (isGap(segment)) {

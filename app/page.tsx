@@ -9,12 +9,16 @@ export default function HomePage() {
     const [code, setCode] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+    const [existingTicketId, setExistingTicketId] = useState<string | null>(null);
+    const [validatedCode, setValidatedCode] = useState<string | null>(null);
 
     async function handleContinue(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
         setLoading(true);
         setMessage("");
+        setExistingTicketId(null);
+        setValidatedCode(null);
 
         try {
             const response = await fetch("/api/validate-code", {
@@ -29,11 +33,18 @@ export default function HomePage() {
 
             if (!response.ok || !result.success) {
                 if (result.alreadyBooked && result.ticketId) {
-                    router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
+                    setExistingTicketId(result.ticketId);
+                    setValidatedCode(result.code || code.trim().toUpperCase());
                     return;
                 }
 
                 setMessage(result.message || "Invalid booking code.");
+                return;
+            }
+
+            if (result.existingTicketId) {
+                setExistingTicketId(result.existingTicketId);
+                setValidatedCode(result.code);
                 return;
             }
 
@@ -65,7 +76,12 @@ export default function HomePage() {
 
                         <input
                             value={code}
-                            onChange={(e) => setCode(e.target.value.toUpperCase())}
+                            onChange={(e) => {
+                                setCode(e.target.value.toUpperCase());
+                                setExistingTicketId(null);
+                                setValidatedCode(null);
+                                setMessage("");
+                            }}
                             placeholder="Example: TEST-REG-001"
                             className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-3 text-lg outline-none focus:border-blue-500"
                         />
@@ -74,6 +90,34 @@ export default function HomePage() {
                     {message && (
                         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
                             {message}
+                        </div>
+                    )}
+
+                    {existingTicketId && validatedCode && (
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+                            <p className="font-semibold">A ticket already exists for this code.</p>
+
+                            <p className="mt-1">
+                                You can view your existing ticket, or continue to book additional guest seats.
+                            </p>
+
+                            <div className="mt-4 grid gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/ticket/${encodeURIComponent(existingTicketId)}`)}
+                                    className="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white"
+                                >
+                                    View Existing Ticket
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => router.push(`/book/${encodeURIComponent(validatedCode)}`)}
+                                    className="rounded-lg bg-black px-4 py-2 font-semibold text-white"
+                                >
+                                    Book More Guest Seats
+                                </button>
+                            </div>
                         </div>
                     )}
 
