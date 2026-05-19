@@ -13,6 +13,41 @@ type RouteProps = {
     }>;
 };
 
+function formatFloorName(value?: string | null) {
+    const normalized = String(value || "").trim().toLowerCase();
+
+    if (normalized.includes("balcony")) return "Balcony";
+    if (normalized.includes("ground")) return "Ground";
+
+    return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Seating Area";
+}
+
+function buildSeatDisplay(bookingSeats: any[] | null | undefined) {
+    const groups = new Map<string, string[]>();
+
+    for (const item of bookingSeats || []) {
+        const seat = item?.seats;
+        if (!seat) continue;
+
+        const floor = formatFloorName(seat.floor_name);
+        const label = seat.display_label || seat.seat_label;
+        if (!label) continue;
+
+        if (!groups.has(floor)) groups.set(floor, []);
+        groups.get(floor)!.push(label);
+    }
+
+    const groupEntries = Array.from(groups.entries());
+
+    return {
+        seatingArea: groupEntries.map(([floor]) => floor).join(", ") || "-",
+        seats:
+            groupEntries
+                .map(([floor, labels]) => `${floor}: ${labels.join(", ")}`)
+                .join(" | ") || "No seats found",
+    };
+}
+
 async function getShowLogoDataUri() {
     try {
         const logoPath = path.join(process.cwd(), "public", "show-logo.png");
@@ -46,7 +81,6 @@ export async function GET(_request: Request, { params }: RouteProps) {
       ),
       booking_codes (
         code,
-        code_type,
         max_seats
       ),
       booking_seats (
@@ -55,7 +89,7 @@ export async function GET(_request: Request, { params }: RouteProps) {
           display_label,
           row_name,
           seat_number,
-          section
+          floor_name
         )
       )
     `
@@ -78,17 +112,7 @@ export async function GET(_request: Request, { params }: RouteProps) {
         ? booking.booking_codes[0]
         : booking.booking_codes;
 
-    const seats =
-        booking.booking_seats
-            ?.map((item: any) => {
-                const seat = item.seats;
-                if (!seat) return null;
-
-                const label = seat.display_label || seat.seat_label;
-                return seat.section ? `${seat.section} - ${label}` : label;
-            })
-            .filter(Boolean)
-            .join(", ") || "No seats found";
+    const { seatingArea, seats } = buildSeatDisplay(booking.booking_seats as any[]);
 
     const logoDataUri = await getShowLogoDataUri();
 
@@ -101,7 +125,7 @@ export async function GET(_request: Request, { params }: RouteProps) {
         learnerName: booking.learner_name,
         parentName: booking.parent_name,
         seats,
-        codeType: bookingCode?.code_type || null,
+        seatingArea,
         logoDataUri,
     });
 

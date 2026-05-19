@@ -16,7 +16,7 @@ type TicketPdfDocumentProps = {
     learnerName: string | null;
     parentName: string | null;
     seats: string;
-    codeType: string | null;
+    seatingArea: string;
     logoDataUri?: string | null;
 };
 
@@ -116,8 +116,15 @@ const styles = StyleSheet.create({
         letterSpacing: 1.4,
         marginBottom: 8,
     },
+    areaValue: {
+        fontSize: 28,
+        fontWeight: "bold",
+        textAlign: "center",
+        color: "#020617",
+        marginBottom: 12,
+    },
     seatsValue: {
-        fontSize: 30,
+        fontSize: 22,
         fontWeight: "bold",
         textAlign: "center",
         color: "#020617",
@@ -148,7 +155,7 @@ export default function TicketPdfDocument({
     learnerName,
     parentName,
     seats,
-    codeType,
+    seatingArea,
     logoDataUri,
 }: TicketPdfDocumentProps) {
     return (
@@ -190,19 +197,9 @@ export default function TicketPdfDocument({
                             </View>
                         </View>
 
-                        <View style={styles.infoGrid}>
-                            <View style={styles.infoBox}>
-                                <Text style={styles.label}>Code Type</Text>
-                                <Text style={styles.value}>{codeType || "-"}</Text>
-                            </View>
-
-                            <View style={styles.infoBox}>
-                                <Text style={styles.label}>Status</Text>
-                                <Text style={styles.value}>Confirmed</Text>
-                            </View>
-                        </View>
-
                         <View style={styles.seatsBox}>
+                            <Text style={styles.seatsLabel}>Seating Area</Text>
+                            <Text style={styles.areaValue}>{seatingArea}</Text>
                             <Text style={styles.seatsLabel}>Seats</Text>
                             <Text style={styles.seatsValue}>{seats}</Text>
                         </View>

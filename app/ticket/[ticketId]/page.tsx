@@ -11,6 +11,41 @@ type PageProps = {
     }>;
 };
 
+function formatFloorName(value?: string | null) {
+    const normalized = String(value || "").trim().toLowerCase();
+
+    if (normalized.includes("balcony")) return "Balcony";
+    if (normalized.includes("ground")) return "Ground";
+
+    return value ? value.charAt(0).toUpperCase() + value.slice(1) : "Seating Area";
+}
+
+function buildSeatDisplay(bookingSeats: any[] | null | undefined) {
+    const groups = new Map<string, string[]>();
+
+    for (const item of bookingSeats || []) {
+        const seat = item?.seats;
+        if (!seat) continue;
+
+        const floor = formatFloorName(seat.floor_name);
+        const label = seat.display_label || seat.seat_label;
+        if (!label) continue;
+
+        if (!groups.has(floor)) groups.set(floor, []);
+        groups.get(floor)!.push(label);
+    }
+
+    const groupEntries = Array.from(groups.entries());
+
+    return {
+        seatingArea: groupEntries.map(([floor]) => floor).join(", ") || "-",
+        seats:
+            groupEntries
+                .map(([floor, labels]) => `${floor}: ${labels.join(", ")}`)
+                .join(" • ") || "No seats found",
+    };
+}
+
 export default async function TicketPage({ params }: PageProps) {
     const { ticketId } = await params;
 
@@ -35,15 +70,15 @@ export default async function TicketPage({ params }: PageProps) {
       ),
       booking_codes (
         code,
-        code_type,
         max_seats
       ),
       booking_seats (
         seats (
           seat_label,
+          display_label,
           row_name,
           seat_number,
-          section
+          floor_name
         )
       )
     `
@@ -74,11 +109,7 @@ export default async function TicketPage({ params }: PageProps) {
         );
     }
 
-    const seats =
-        booking.booking_seats
-            ?.map((item: any) => item.seats?.seat_label)
-            .filter(Boolean)
-            .join(", ") || "No seats found";
+    const { seatingArea, seats } = buildSeatDisplay(booking.booking_seats as any[]);
 
     const event = Array.isArray(booking.events)
         ? booking.events[0]
@@ -141,22 +172,10 @@ export default async function TicketPage({ params }: PageProps) {
                     </div>
 
                     <div className="mt-6 rounded-3xl bg-yellow-100 p-6 text-center ring-1 ring-yellow-200">
-                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-yellow-800">Seats</p>
-                        <p className="mt-2 text-5xl font-black tracking-tight text-slate-950">{seats}</p>
-                    </div>
-
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-slate-200 p-5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Code Type</p>
-                            <p className="mt-2 text-lg font-bold capitalize text-slate-950">
-                                {bookingCode?.code_type || "-"}
-                            </p>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 p-5">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
-                            <p className="mt-2 text-lg font-bold capitalize text-green-700">{booking.status}</p>
-                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-yellow-800">Seating Area</p>
+                        <p className="mt-2 text-4xl font-black tracking-tight text-slate-950">{seatingArea}</p>
+                        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.25em] text-yellow-800">Seats</p>
+                        <p className="mt-2 text-3xl font-black tracking-tight text-slate-950">{seats}</p>
                     </div>
 
                     <div className="mt-8 rounded-2xl bg-blue-50 p-5 text-sm leading-6 text-blue-900">
