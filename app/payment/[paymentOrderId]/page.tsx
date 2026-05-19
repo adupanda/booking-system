@@ -157,13 +157,13 @@ export default async function PaymentStatusPage({ params }: PageProps) {
                             Pay exactly the amount shown above. After paying, copy the Razorpay payment ID / transaction reference and enter it below. The school team will use that reference to match your payment before confirming the ticket.
                         </p>
 
-                        <div className="mt-5 grid gap-5 md:grid-cols-[220px_1fr]">
+                        <div className="mt-5 grid gap-6 lg:grid-cols-[380px_1fr]">
                             <div className="rounded-xl bg-white p-4 text-center shadow-sm">
                                 {upiQrImageUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={upiQrImageUrl} alt="Payment QR" className="mx-auto h-48 w-48 rounded-lg object-contain" />
+                                    <img src={upiQrImageUrl} alt="Payment QR" className="mx-auto h-80 w-80 max-w-full rounded-lg object-contain sm:h-96 sm:w-96" />
                                 ) : (
-                                    <div className="flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-500">
+                                    <div className="flex h-80 w-full items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-500 sm:h-96">
                                         QR not configured
                                     </div>
                                 )}

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TicketActions from "@/components/TicketActions";
-import TicketQRCode from "@/components/TicketQRCode";
 
 type PageProps = {
     params: Promise<{
@@ -146,11 +145,6 @@ export default async function TicketPage({ params }: PageProps) {
                         <p className="mt-1 text-3xl font-bold text-gray-900">{seats}</p>
                     </div>
                 </div>
-
-                <div className="mt-8 flex justify-center rounded-xl border border-gray-200 bg-white p-5 print:flex">
-                    <TicketQRCode ticketId={booking.ticket_id} />
-                </div>
-
                 <div className="mt-8 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
                     Please show this ticket at the entrance. Entry staff will verify your ticket
                     using the ticket ID and seat details.
