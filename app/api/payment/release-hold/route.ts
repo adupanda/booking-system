@@ -6,19 +6,19 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const orderId = String(body.orderId || "");
+        const paymentOrderId = String(body.paymentOrderId || body.orderId || "");
 
-        if (!orderId) {
+        if (!paymentOrderId) {
             return NextResponse.json({ success: true });
         }
 
         const { data: paymentOrder } = await supabaseAdmin
             .from("payment_orders")
             .select("hold_id, status")
-            .eq("razorpay_order_id", orderId)
+            .eq("id", paymentOrderId)
             .maybeSingle();
 
-        if (paymentOrder?.hold_id && paymentOrder.status === "created") {
+        if (paymentOrder?.hold_id && paymentOrder.status === "pending_payment") {
             await supabaseAdmin.rpc("release_seat_hold", {
                 p_hold_id: paymentOrder.hold_id,
             });

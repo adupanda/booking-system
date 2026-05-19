@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import AdminLogoutButton from "@/components/AdminLogoutButton";
 export default function AdminHomePage() {
     return (
@@ -51,6 +51,18 @@ export default function AdminHomePage() {
                         <h2 className="text-xl font-bold text-gray-900">Parent Page</h2>
                         <p className="mt-2 text-gray-600">
                             Open the public booking code entry page.
+                        </p>
+                    </Link>
+
+
+
+                    <Link
+                        href="/admin/payments"
+                        className="rounded-xl border border-purple-200 bg-purple-50 p-6 transition hover:bg-purple-100"
+                    >
+                        <h2 className="text-xl font-bold text-purple-950">Pending Payments</h2>
+                        <p className="mt-2 text-purple-800">
+                            Confirm QR/UPI payments and generate tickets.
                         </p>
                     </Link>
 
