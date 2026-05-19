@@ -33,13 +33,18 @@ export async function POST(request: Request) {
         if (error) {
             console.error("Booking error:", error);
 
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: error.message || "Could not complete booking.",
-                },
-                { status: 400 }
-            );
+            const rawMessage = String(error.message || "");
+            const lowerMessage = rawMessage.toLowerCase();
+            const message =
+                lowerMessage.includes("blocked") ||
+                lowerMessage.includes("not available") ||
+                lowerMessage.includes("already")
+                    ? "One or more selected seats are currently blocked by another booking. Please refresh and choose another seat."
+                    : lowerMessage.includes("payment")
+                      ? "This seat selection needs payment. Please refresh and try again."
+                      : rawMessage || "Could not complete booking.";
+
+            return NextResponse.json({ success: false, message }, { status: 400 });
         }
 
         const bookingResult = data?.[0];

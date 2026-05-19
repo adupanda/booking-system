@@ -123,31 +123,9 @@ export async function POST(request: Request) {
             }
         }
 
-        const includedLimit = Number(bookingCode.included_seat_limit || 2);
+        const rawIncludedLimit = Number(bookingCode.included_seat_limit ?? 2);
+        const includedLimit = bookingCode.code_type === "paid" ? 0 : rawIncludedLimit;
         const includedRemaining = Math.max(includedLimit - usedIncludedCount, 0);
-        const paidGuestSeatCount = Math.max(uniqueSeatIds.length - includedRemaining, 0);
-
-        if (paidGuestSeatCount > 0 && !bookingCode.allow_paid_extra_seats) {
-            return NextResponse.json(
-                { success: false, message: "This code does not allow extra guest seats." },
-                { status: 400 }
-            );
-        }
-
-        if (
-            paidGuestSeatCount > 0 &&
-            bookingCode.max_paid_extra_seats !== null &&
-            bookingCode.max_paid_extra_seats !== undefined &&
-            usedPaidGuestCount + paidGuestSeatCount > Number(bookingCode.max_paid_extra_seats)
-        ) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: "You have reached the maximum number of extra guest seats allowed for this code.",
-                },
-                { status: 400 }
-            );
-        }
 
         const { data: selectedSeats, error: seatError } = await supabaseAdmin
             .from("seats")
@@ -173,19 +151,47 @@ export async function POST(request: Request) {
         });
 
         if (invalidSeat) {
-            return NextResponse.json(
-                { success: false, message: "One or more selected seats are not available." },
-                { status: 400 }
-            );
+            const message =
+                invalidSeat.status === "blocked"
+                    ? "One or more selected seats are currently blocked by another booking. Please refresh and choose another seat."
+                    : invalidSeat.status !== "available"
+                      ? "One or more selected seats are no longer available. Please refresh and choose another seat."
+                      : "One or more selected seats are not available.";
+
+            return NextResponse.json({ success: false, message }, { status: 400 });
         }
 
         const selectedPaidSectionCount = selectedSeats.filter(isPaidFamilySeat).length;
+        const selectedNonPaidSectionCount = selectedSeats.length - selectedPaidSectionCount;
+        const paidGuestSeatCount = selectedPaidSectionCount;
 
-        if (selectedPaidSectionCount < paidGuestSeatCount) {
+        if (selectedNonPaidSectionCount > includedRemaining) {
             return NextResponse.json(
                 {
                     success: false,
                     message: "Extra guest seats must be selected from the paid/family seating section.",
+                },
+                { status: 400 }
+            );
+        }
+
+        if (paidGuestSeatCount > 0 && !bookingCode.allow_paid_extra_seats) {
+            return NextResponse.json(
+                { success: false, message: "This code does not allow paid seats." },
+                { status: 400 }
+            );
+        }
+
+        if (
+            paidGuestSeatCount > 0 &&
+            bookingCode.max_paid_extra_seats !== null &&
+            bookingCode.max_paid_extra_seats !== undefined &&
+            usedPaidGuestCount + paidGuestSeatCount > Number(bookingCode.max_paid_extra_seats)
+        ) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: "You have reached the maximum number of paid seats allowed for this code.",
                 },
                 { status: 400 }
             );
@@ -221,15 +227,21 @@ export async function POST(request: Request) {
 
         if (holdError) {
             console.error("Seat hold error:", holdError);
-            return NextResponse.json(
-                { success: false, message: holdError.message || "Could not reserve selected seats." },
-                { status: 400 }
-            );
+            const rawMessage = String(holdError.message || "");
+            const lowerMessage = rawMessage.toLowerCase();
+            const message =
+                lowerMessage.includes("blocked") ||
+                lowerMessage.includes("not available") ||
+                lowerMessage.includes("already")
+                    ? "One or more selected seats are currently blocked by another booking. Please refresh and choose another seat."
+                    : rawMessage || "Could not reserve selected seats.";
+
+            return NextResponse.json({ success: false, message }, { status: 400 });
         }
 
         const holdResult = holdData?.[0];
 
-        if (!holdResult || Number(holdResult.amount_paise) <= 0) {
+        if (!holdResult) {
             await supabaseAdmin.rpc("release_seat_hold", { p_hold_id: createdHoldId });
             return NextResponse.json(
                 { success: false, message: "Could not calculate payment for selected seats." },
@@ -242,9 +254,9 @@ export async function POST(request: Request) {
             .insert({
                 booking_code: code,
                 seat_ids: uniqueSeatIds,
-                included_seat_count: Number(holdResult.included_seat_count || 0),
-                paid_guest_seat_count: Number(holdResult.paid_guest_seat_count || 0),
-                amount_paise: Number(holdResult.amount_paise),
+                included_seat_count: selectedNonPaidSectionCount,
+                paid_guest_seat_count: paidGuestSeatCount,
+                amount_paise: expectedAmountPaise,
                 currency: "INR",
                 hold_id: createdHoldId,
                 hold_expires_at: holdExpiresAt,
@@ -268,10 +280,10 @@ export async function POST(request: Request) {
             paymentRequired: true,
             manualPaymentRequired: true,
             paymentOrderId: paymentOrder.id,
-            amount: Number(holdResult.amount_paise),
-            amountRupees: Number(holdResult.amount_paise) / 100,
+            amount: expectedAmountPaise,
+            amountRupees: expectedAmountPaise / 100,
             currency: "INR",
-            paidGuestSeatCount: Number(holdResult.paid_guest_seat_count || 0),
+            paidGuestSeatCount,
             guestSeatPriceRupees: guestSeatPricePaise / 100,
             holdExpiresAt,
             upiId: process.env.UPI_ID || "",

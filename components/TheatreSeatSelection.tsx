@@ -124,7 +124,8 @@ export default function TheatreSeatSelection({
     const [errorMessage, setErrorMessage] = useState("");
     const [manualPaymentInfo, setManualPaymentInfo] = useState<ManualPaymentInfo | null>(null);
 
-    const includedSeatLimit = Number(bookingCode.included_seat_limit ?? 2);
+    const rawIncludedSeatLimit = Number(bookingCode.included_seat_limit ?? 2);
+    const includedSeatLimit = bookingCode.code_type === "paid" ? 0 : rawIncludedSeatLimit;
     const allowPaidExtraSeats = Boolean(bookingCode.allow_paid_extra_seats ?? true);
     const guestSeatPricePaise = Number(bookingCode.guest_seat_price_paise ?? 50000);
 
@@ -155,14 +156,14 @@ export default function TheatreSeatSelection({
     }
 
     function getPaidGuestSeatCount(nextSelectedSeats: Seat[]) {
-        return Math.max(nextSelectedSeats.length - includedSeatsRemaining, 0);
+        return nextSelectedSeats.filter(isPaidFamilySeat).length;
     }
 
     function canSelectionPassPaidSectionRule(nextSelectedSeats: Seat[]) {
-        const paidGuestSeatCount = getPaidGuestSeatCount(nextSelectedSeats);
-        const selectedPaidFamilySeats = nextSelectedSeats.filter(isPaidFamilySeat).length;
+        const paidSectionSeats = nextSelectedSeats.filter(isPaidFamilySeat).length;
+        const nonPaidSectionSeats = nextSelectedSeats.length - paidSectionSeats;
 
-        return selectedPaidFamilySeats >= paidGuestSeatCount;
+        return nonPaidSectionSeats <= includedSeatsRemaining;
     }
 
     function handleSeatClick(seat: Seat) {
@@ -231,16 +232,45 @@ export default function TheatreSeatSelection({
             return;
         }
 
-        if (!canSelectionPassPaidSectionRule(selectedSeats)) {
-            setErrorMessage("Extra guest seats must be selected from the paid/family seating section.");
-            return;
-        }
-
         setLoading(true);
         setErrorMessage("");
 
         try {
-            const paymentOrderResponse = await fetch("/api/payment/create-order", {
+            const selectedSeats = seats.filter((seat) =>
+                selectedSeatIds.includes(seat.id)
+            );
+
+            const paidGuestSeatCount = getPaidGuestSeatCount(selectedSeats);
+
+            if (paidGuestSeatCount > 0) {
+                const response = await fetch("/api/payment/create-order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        code: bookingCode.code,
+                        seatIds: selectedSeatIds,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    setErrorMessage(result.message || "Could not create payment request.");
+                    setLoading(false);
+                    return;
+                }
+
+                if (!result.paymentOrderId) {
+                    setErrorMessage("Payment request was created but no payment page was returned.");
+                    setLoading(false);
+                    return;
+                }
+
+                router.push(`/payment/${encodeURIComponent(result.paymentOrderId)}`);
+                return;
+            }
+
+            const response = await fetch("/api/book", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -249,27 +279,18 @@ export default function TheatreSeatSelection({
                 }),
             });
 
-            const paymentOrderResult = await readJsonResponse<PaymentOrderResponse>(paymentOrderResponse);
+            const result = await response.json();
 
-            if (!paymentOrderResponse.ok || !paymentOrderResult.success) {
-                throw new Error(paymentOrderResult.message || "Could not start payment.");
-            }
-
-            if (!paymentOrderResult.paymentRequired) {
-                await confirmFreeBooking();
+            if (!response.ok || !result.success || !result.ticketId) {
+                setErrorMessage(result.message || "Could not complete booking.");
+                setLoading(false);
                 return;
             }
 
-            if (!paymentOrderResult.paymentOrderId || !paymentOrderResult.holdExpiresAt) {
-                throw new Error("Payment request was created incorrectly. Please try again.");
-            }
-
-            router.push(`/payment/${encodeURIComponent(paymentOrderResult.paymentOrderId)}`);
-            return;
-        } catch (error: any) {
+            router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
+        } catch (error) {
             console.error(error);
-            setErrorMessage(error?.message || "Could not complete booking. Please try again.");
-        } finally {
+            setErrorMessage("Could not complete booking. Please try again.");
             setLoading(false);
         }
     }
