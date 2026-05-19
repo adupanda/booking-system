@@ -236,41 +236,9 @@ export default function TheatreSeatSelection({
         setErrorMessage("");
 
         try {
-            const selectedSeats = seats.filter((seat) =>
-                selectedSeatIds.includes(seat.id)
-            );
-
-            const paidGuestSeatCount = getPaidGuestSeatCount(selectedSeats);
-
-            if (paidGuestSeatCount > 0) {
-                const response = await fetch("/api/payment/create-order", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        code: bookingCode.code,
-                        seatIds: selectedSeatIds,
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (!response.ok || !result.success) {
-                    setErrorMessage(result.message || "Could not create payment request.");
-                    setLoading(false);
-                    return;
-                }
-
-                if (!result.paymentOrderId) {
-                    setErrorMessage("Payment request was created but no payment page was returned.");
-                    setLoading(false);
-                    return;
-                }
-
-                router.push(`/payment/${encodeURIComponent(result.paymentOrderId)}`);
-                return;
-            }
-
-            const response = await fetch("/api/book", {
+            // Let the backend decide whether this exact selection needs payment.
+            // This prevents the frontend from wrongly sending normal/free bookings to payment.
+            const paymentResponse = await fetch("/api/payment/create-order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -279,15 +247,26 @@ export default function TheatreSeatSelection({
                 }),
             });
 
-            const result = await response.json();
+            const paymentResult = await readJsonResponse<PaymentOrderResponse>(paymentResponse);
 
-            if (!response.ok || !result.success || !result.ticketId) {
-                setErrorMessage(result.message || "Could not complete booking.");
+            if (!paymentResponse.ok || !paymentResult.success) {
+                setErrorMessage(paymentResult.message || "Could not check payment requirement.");
                 setLoading(false);
                 return;
             }
 
-            router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
+            if (!paymentResult.paymentRequired) {
+                await confirmFreeBooking();
+                return;
+            }
+
+            if (!paymentResult.paymentOrderId) {
+                setErrorMessage("Payment is required, but no payment request was created. Please try again.");
+                setLoading(false);
+                return;
+            }
+
+            router.push(`/payment/${encodeURIComponent(paymentResult.paymentOrderId)}`);
         } catch (error) {
             console.error(error);
             setErrorMessage("Could not complete booking. Please try again.");
