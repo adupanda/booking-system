@@ -156,14 +156,20 @@ export default function TheatreSeatSelection({
     }
 
     function getPaidGuestSeatCount(nextSelectedSeats: Seat[]) {
-        return nextSelectedSeats.filter(isPaidFamilySeat).length;
+        // Parents can use their included/free seats anywhere, including the paid section.
+        // Only seats beyond the remaining included allowance become paid guest seats.
+        return Math.max(nextSelectedSeats.length - includedSeatsRemaining, 0);
     }
 
     function canSelectionPassPaidSectionRule(nextSelectedSeats: Seat[]) {
-        const paidSectionSeats = nextSelectedSeats.filter(isPaidFamilySeat).length;
-        const nonPaidSectionSeats = nextSelectedSeats.length - paidSectionSeats;
+        const paidGuestSeatCount = getPaidGuestSeatCount(nextSelectedSeats);
 
-        return nonPaidSectionSeats <= includedSeatsRemaining;
+        if (paidGuestSeatCount <= 0) {
+            return true;
+        }
+
+        const paidSectionSeats = nextSelectedSeats.filter(isPaidFamilySeat).length;
+        return paidSectionSeats >= paidGuestSeatCount;
     }
 
     function handleSeatClick(seat: Seat) {
@@ -236,9 +242,41 @@ export default function TheatreSeatSelection({
         setErrorMessage("");
 
         try {
-            // Let the backend decide whether this exact selection needs payment.
-            // This prevents the frontend from wrongly sending normal/free bookings to payment.
-            const paymentResponse = await fetch("/api/payment/create-order", {
+            const selectedSeats = seats.filter((seat) =>
+                selectedSeatIds.includes(seat.id)
+            );
+
+            const paidGuestSeatCount = getPaidGuestSeatCount(selectedSeats);
+
+            if (paidGuestSeatCount > 0) {
+                const response = await fetch("/api/payment/create-order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        code: bookingCode.code,
+                        seatIds: selectedSeatIds,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    setErrorMessage(result.message || "Could not create payment request.");
+                    setLoading(false);
+                    return;
+                }
+
+                if (!result.paymentOrderId) {
+                    setErrorMessage("Payment request was created but no payment page was returned.");
+                    setLoading(false);
+                    return;
+                }
+
+                router.push(`/payment/${encodeURIComponent(result.paymentOrderId)}`);
+                return;
+            }
+
+            const response = await fetch("/api/book", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -247,26 +285,15 @@ export default function TheatreSeatSelection({
                 }),
             });
 
-            const paymentResult = await readJsonResponse<PaymentOrderResponse>(paymentResponse);
+            const result = await response.json();
 
-            if (!paymentResponse.ok || !paymentResult.success) {
-                setErrorMessage(paymentResult.message || "Could not check payment requirement.");
+            if (!response.ok || !result.success || !result.ticketId) {
+                setErrorMessage(result.message || "Could not complete booking.");
                 setLoading(false);
                 return;
             }
 
-            if (!paymentResult.paymentRequired) {
-                await confirmFreeBooking();
-                return;
-            }
-
-            if (!paymentResult.paymentOrderId) {
-                setErrorMessage("Payment is required, but no payment request was created. Please try again.");
-                setLoading(false);
-                return;
-            }
-
-            router.push(`/payment/${encodeURIComponent(paymentResult.paymentOrderId)}`);
+            router.push(`/ticket/${encodeURIComponent(result.ticketId)}`);
         } catch (error) {
             console.error(error);
             setErrorMessage("Could not complete booking. Please try again.");
@@ -518,7 +545,7 @@ export default function TheatreSeatSelection({
 
                     {selectedPaidGuestSeatCount > 0 && (
                         <p className="mt-1 text-sm font-semibold text-purple-700">
-                            Paid guest seats selected: {selectedPaidGuestSeatCount} · Amount: ₹
+                            Extra paid guest seats: {selectedPaidGuestSeatCount} · Amount: ₹
                             {selectedPaymentAmountRupees}
                         </p>
                     )}
