@@ -2,6 +2,9 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TicketActions from "@/components/TicketActions";
 
+const SHOW_LOGO_SRC =
+    process.env.NEXT_PUBLIC_SHOW_LOGO_URL || "/show-logo.png";
+
 type PageProps = {
     params: Promise<{
         ticketId: string;
@@ -50,9 +53,9 @@ export default async function TicketPage({ params }: PageProps) {
 
     if (error || !booking) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-                <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow">
-                    <h1 className="text-2xl font-bold text-red-600">
+            <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
+                <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-xl">
+                    <h1 className="text-2xl font-black text-red-600">
                         Ticket not found
                     </h1>
 
@@ -62,7 +65,7 @@ export default async function TicketPage({ params }: PageProps) {
 
                     <Link
                         href="/"
-                        className="mt-6 inline-block rounded-lg bg-black px-4 py-3 font-semibold text-white"
+                        className="mt-6 inline-block rounded-xl bg-black px-5 py-3 font-semibold text-white"
                     >
                         Go Home
                     </Link>
@@ -86,75 +89,86 @@ export default async function TicketPage({ params }: PageProps) {
         : booking.booking_codes;
 
     return (
-        <main className="min-h-screen bg-gray-50 p-6">
-            <div className="mx-auto max-w-2xl rounded-2xl bg-white p-8 shadow">
-                <div className="text-center">
-                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                        School Event Ticket
+        <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-100 p-6">
+            <div className="mx-auto max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+                <div className="bg-slate-950 px-8 py-8 text-center text-white">
+                    <div className="mx-auto flex justify-center">
+                        <img
+                            src={SHOW_LOGO_SRC}
+                            alt="Show logo"
+                            className="max-h-32 max-w-sm object-contain"
+                        />
+                    </div>
+
+                    <p className="mt-6 text-xs font-semibold uppercase tracking-[0.35em] text-yellow-300">
+                        Official Entry Ticket
                     </p>
 
-                    <h1 className="mt-2 text-3xl font-bold text-gray-900">
-                        {event?.name}
+                    <h1 className="mt-3 text-4xl font-black tracking-tight">
+                        {event?.name || "School Event"}
                     </h1>
 
-                    <p className="mt-2 text-gray-600">{event?.venue}</p>
-                    <p className="text-gray-600">{event?.event_date}</p>
+                    <p className="mt-3 text-sm text-slate-300">
+                        {[event?.venue, event?.event_date].filter(Boolean).join(" • ")}
+                    </p>
                 </div>
 
-                <div className="mt-8 rounded-xl border border-gray-200 p-5">
+                <div className="p-8">
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div>
-                            <p className="text-sm text-gray-500">Ticket ID</p>
-                            <p className="font-bold text-gray-900">{booking.ticket_id}</p>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ticket ID</p>
+                            <p className="mt-2 break-all text-xl font-black text-slate-950">{booking.ticket_id}</p>
                         </div>
 
-                        <div>
-                            <p className="text-sm text-gray-500">Booking Code</p>
-                            <p className="font-bold text-gray-900">{bookingCode?.code}</p>
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Booking Code</p>
+                            <p className="mt-2 break-all text-xl font-black text-slate-950">{bookingCode?.code}</p>
                         </div>
 
-                        <div>
-                            <p className="text-sm text-gray-500">Learner / Guest</p>
-                            <p className="font-bold text-gray-900">
+                        <div className="rounded-2xl border border-slate-200 p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Learner / Guest</p>
+                            <p className="mt-2 text-lg font-bold text-slate-950">
                                 {booking.learner_name || "Guest"}
                             </p>
                         </div>
 
-                        <div>
-                            <p className="text-sm text-gray-500">Parent / Contact</p>
-                            <p className="font-bold text-gray-900">
+                        <div className="rounded-2xl border border-slate-200 p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Parent / Contact</p>
+                            <p className="mt-2 text-lg font-bold text-slate-950">
                                 {booking.parent_name || "Not provided"}
                             </p>
                         </div>
+                    </div>
 
-                        <div>
-                            <p className="text-sm text-gray-500">Code Type</p>
-                            <p className="font-bold text-gray-900">
-                                {bookingCode?.code_type}
+                    <div className="mt-6 rounded-3xl bg-yellow-100 p-6 text-center ring-1 ring-yellow-200">
+                        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-yellow-800">Seats</p>
+                        <p className="mt-2 text-5xl font-black tracking-tight text-slate-950">{seats}</p>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-slate-200 p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Code Type</p>
+                            <p className="mt-2 text-lg font-bold capitalize text-slate-950">
+                                {bookingCode?.code_type || "-"}
                             </p>
                         </div>
 
-                        <div>
-                            <p className="text-sm text-gray-500">Status</p>
-                            <p className="font-bold text-gray-900">{booking.status}</p>
+                        <div className="rounded-2xl border border-slate-200 p-5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
+                            <p className="mt-2 text-lg font-bold capitalize text-green-700">{booking.status}</p>
                         </div>
                     </div>
 
-                    <div className="mt-6 rounded-xl bg-gray-100 p-5 text-center">
-                        <p className="text-sm text-gray-500">Seats</p>
-                        <p className="mt-1 text-3xl font-bold text-gray-900">{seats}</p>
+                    <div className="mt-8 rounded-2xl bg-blue-50 p-5 text-sm leading-6 text-blue-900">
+                        Please show this ticket at the entrance. Entry staff will verify your ticket using the ticket ID and seat details.
                     </div>
-                </div>
-                <div className="mt-8 rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
-                    Please show this ticket at the entrance. Entry staff will verify your ticket
-                    using the ticket ID and seat details.
-                </div>
 
-                <TicketActions ticketId={booking.ticket_id} />
+                    <TicketActions ticketId={booking.ticket_id} />
 
-                <p className="mt-6 text-center text-sm text-gray-500">
-                    Use your browser print option to save or print this ticket.
-                </p>
+                    <p className="mt-6 text-center text-sm text-gray-500">
+                        Use your browser print option to save or print this ticket.
+                    </p>
+                </div>
             </div>
         </main>
     );

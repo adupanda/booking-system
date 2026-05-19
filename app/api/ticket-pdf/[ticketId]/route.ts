@@ -1,8 +1,9 @@
-﻿import React from "react";
-import { NextResponse } from "next/server";
+import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import TicketPdfDocument from "@/components/TicketPdfDocument";
+import path from "path";
+import { readFile } from "fs/promises";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,16 @@ type RouteProps = {
         ticketId: string;
     }>;
 };
+
+async function getShowLogoDataUri() {
+    try {
+        const logoPath = path.join(process.cwd(), "public", "show-logo.png");
+        const logoBuffer = await readFile(logoPath);
+        return `data:image/png;base64,${logoBuffer.toString("base64")}`;
+    } catch {
+        return null;
+    }
+}
 
 export async function GET(_request: Request, { params }: RouteProps) {
     const { ticketId } = await params;
@@ -53,7 +64,7 @@ export async function GET(_request: Request, { params }: RouteProps) {
         .single();
 
     if (error || !booking) {
-        return NextResponse.json(
+        return Response.json(
             { success: false, message: "Ticket not found." },
             { status: 404 }
         );
@@ -79,6 +90,8 @@ export async function GET(_request: Request, { params }: RouteProps) {
             .filter(Boolean)
             .join(", ") || "No seats found";
 
+    const logoDataUri = await getShowLogoDataUri();
+
     const pdfElement = React.createElement(TicketPdfDocument as any, {
         eventName: event?.name || "School Event",
         eventDate: event?.event_date || null,
@@ -89,10 +102,10 @@ export async function GET(_request: Request, { params }: RouteProps) {
         parentName: booking.parent_name,
         seats,
         codeType: bookingCode?.code_type || null,
+        logoDataUri,
     });
 
     const pdfBuffer = await renderToBuffer(pdfElement as any);
-
 
     return new Response(new Uint8Array(pdfBuffer), {
         status: 200,
